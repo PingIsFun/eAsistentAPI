@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+src/eAsisitent_scraper/__init__.py
+src/eAsisitent_scraper/scraper.py
+src/eAsistent_scraper.egg-info/PKG-INFO
+src/eAsistent_scraper.egg-info/SOURCES.txt
+src/eAsistent_scraper.egg-info/dependency_links.txt
+src/eAsistent_scraper.egg-info/requires.txt
+src/eAsistent_scraper.egg-info/top_level.txt

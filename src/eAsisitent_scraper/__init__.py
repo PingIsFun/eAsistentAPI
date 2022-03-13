@@ -1,0 +1,1 @@
+from eAsisitent_scraper.scraper import get_schedule_data

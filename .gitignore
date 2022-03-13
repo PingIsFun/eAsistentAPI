@@ -1,0 +1,6 @@
+env/
+venv/
+.idea/
+__pycache__/
+random_code/
+dist/

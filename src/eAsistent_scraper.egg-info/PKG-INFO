@@ -1,0 +1,28 @@
+Metadata-Version: 2.1
+Name: eAsistent-scraper
+Version: 0.0.4
+Summary: Scrapes data from easistent.com/urniki/... and returns it as Python dictionary
+Home-page: https://github.com/PingWasFun/eAsistent-scraper
+Author: PingIsFun
+Author-email: pingisfun@protonmail.com
+License: MIT License
+Project-URL: Bug Tracker, https://github.com/PingWasFun/eAsistent-scraper/issues
+Platform: any
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# eAsistent scraper (WIP)
+
+Scrapes data from *easistent.com/urniki/...* and returns it as Python dictionary
+
+To get the required dependencies run:
+
+    pip install -r requirements.txt
+
+Still Work in Progress
+
+
