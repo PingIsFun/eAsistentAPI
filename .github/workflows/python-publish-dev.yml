@@ -31,8 +31,12 @@ jobs:
       run: python -m build
     - name: Publish package
       run: python -m twine upload --repository testpypi dist/* -u=__token__ -p=${{ secrets.PYPI_TEST_API_TOKEN }}
-    - name: show job status
-      if: always()
-      run: echo $status
-      env:
-        status: ${{job.status}}
+    - uses: nashmaniac/create-issue-action@v1.1
+      name: Create Issue Action
+      with:
+        title: Build Failed
+        token: ${{secrets.GITHUB_TOKEN}}
+        assignees: ${{github.actor}}
+        labels: worflow-failed
+        body: Workflow failed for commit ${{github.sha}}
+      
