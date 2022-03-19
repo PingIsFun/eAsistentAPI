@@ -18,4 +18,4 @@ data = eAsisitent_scraper.get_schedule_data(school_id="SCHOOL_ID", class_id="CLA
 ***
 For support and feature requests ask on [GitHub discussions](https://github.com/PingWasFun/eAsistent-scraper/discussions/categories/general)
 
-To contribute fork the GitHub repository and make a pull request.
+To contribute fork the GitHub repository and make a pull request to the **dev** branch.
