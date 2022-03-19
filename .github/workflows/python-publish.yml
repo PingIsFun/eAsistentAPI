@@ -9,7 +9,7 @@
 name: Upload Python Package
 
 on:
-  push
+  workflow_dispatch
 
 jobs:
   deploy:
@@ -29,4 +29,4 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package
-      uses: python3 -m twine upload --repository testpypi dist/* -u=__token__ -p=${{ secrets.PYPI_TEST_API_TOKEN }}
+      run: python -m twine upload --repository testpypi dist/* -u=__token__ -p=${{ secrets.PYPI_TEST_API_TOKEN }}
