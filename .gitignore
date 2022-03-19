@@ -1,6 +1,16 @@
+# Environments
 env/
 venv/
+
+# IDEs
 .idea/
+
+# Python stuff
 __pycache__/
+Pipfile
+Pipfile.lock
+
+# Other
 random_code/
 dist/
+src/eAsistent_scraper.egg-info/
