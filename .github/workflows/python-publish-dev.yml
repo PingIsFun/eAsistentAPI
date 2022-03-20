@@ -9,7 +9,10 @@
 name: Upload Python Package
 
 on:
-  workflow_dispatch
+  [push, workflow_dispatch]
+
+permissions:
+      issues: write
 
 jobs:
   deploy:
@@ -31,3 +34,17 @@ jobs:
       run: python -m build
     - name: Publish package
       run: python -m twine upload --repository testpypi dist/* -u=__token__ -p=${{ secrets.PYPI_TEST_API_TOKEN }}
+    - name: Create Issue on Failed workflow
+      if: ${{ failure() }}
+      uses: dacbd/create-issue-action@main
+      with:
+        token: ${{ github.token }}
+        title: Action workflow failed.
+        body: |
+          ### Context
+          [Failed Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          [Codebase](https://github.com/${{ github.repository }}/tree/${{ github.sha }})
+          Workflow name - `${{ github.workflow }}`
+          Job -           `${{ github.job }}`
+          status -        `${{ job.status }}`
+        assignees: ${{github.actor}}
