@@ -35,7 +35,7 @@ jobs:
     - name: Publish package
       run: python -m twine upload --repository testpypi dist/* -u=__token__ -p=${{ secrets.PYPI_TEST_API_TOKEN }}
     - name: Create Issue on Failed workflow
-      if: ${{ failure() && github.workflow == "Publish package" }}
+      if: ${{ failure() && (github.workflow == 'Publish package') }}
       uses: dacbd/create-issue-action@main
       with:
         token: ${{ github.token }}
