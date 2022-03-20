@@ -1,4 +1,5 @@
-# eAsistent scraper (WIP)
+# eAsistent scraper (WIP) 
+[![Upload Python Package](https://github.com/PingWasFun/eAsistent-scraper/actions/workflows/python-publish-dev.yml/badge.svg?branch=main)](https://github.com/PingWasFun/eAsistent-scraper/actions/workflows/python-publish-dev.yml)
 ***
 Scrapes data from *easistent.com/urniki/...* and returns it as Python dictionary
 ***
@@ -18,4 +19,4 @@ data = eAsisitent_scraper.get_schedule_data(school_id="SCHOOL_ID", class_id="CLA
 ***
 For support and feature requests ask on [GitHub discussions](https://github.com/PingWasFun/eAsistent-scraper/discussions/categories/general)
 
-To contribute fork the GitHub repository and make a pull request to the **dev** branch.
+To contribute fork the GitHub repository and make a pull request.
