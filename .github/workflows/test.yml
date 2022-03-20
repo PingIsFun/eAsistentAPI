@@ -23,8 +23,7 @@ jobs:
     - name: Publish package
       run: python fail.yp
     - name: Create Issue on Failed workflow
-      
-      if: ${{ failure() && contains( github.workflow, 'Publish package' ) }}
+      if: ${{ (job.status == 'failure') && contains( github.workflow, 'Publish package' ) }}
       uses: dacbd/create-issue-action@main
       with:
         token: ${{ github.token }}
