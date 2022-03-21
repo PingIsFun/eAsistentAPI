@@ -14,3 +14,4 @@ Pipfile.lock
 random_code/
 dist/
 src/eAsistent_scraper.egg-info/
+tests/

@@ -55,7 +55,7 @@ def hour_to_num(hour: str):
     :type hour: str
     :return: The hour as an integer.
     """
-    if hour == "predura":
+    if hour.lower() == "predura":
         return int(0)
     else:
         return int(hour.split(". ura")[0])
