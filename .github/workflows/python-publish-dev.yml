@@ -9,7 +9,8 @@
 name: Upload Python Package
 
 on:
-  [push, workflow_dispatch]
+  release:
+    types: [published]
 
 permissions:
       issues: write
