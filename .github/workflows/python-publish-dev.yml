@@ -34,7 +34,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package
-      run: python -m twine upload --repository testpypi dist/* -u=__token__ -p=${{ secrets.PYPI_TEST_API_TOKEN }}
+      run: python -m twine upload --repository pypi dist/* -u=__token__ -p=${{ secrets.PYPI_EAS_TOKEN }}
     - name: Create Issue on Failed workflow
       if: ${{ failure() }}
       uses: dacbd/create-issue-action@main
