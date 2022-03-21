@@ -1,5 +1,5 @@
 # eAsistent scraper (WIP) 
-[![Upload Python Package](https://github.com/PingWasFun/eAsistent-scraper/actions/workflows/python-publish-dev.yml/badge.svg?branch=main)](https://github.com/PingWasFun/eAsistent-scraper/actions/workflows/python-publish-dev.yml)
+[![Upload Python Package](https://github.com/PingWasFun/eAsistent-scraper/actions/workflows/python-publish-dev.yml/badge.svg)](https://github.com/PingWasFun/eAsistent-scraper/actions/workflows/python-publish-dev.yml)
 ***
 Scrapes data from *easistent.com/urniki/...* and returns it as Python dictionary
 ***
