@@ -47,6 +47,20 @@ def request_schedule(
 today = datetime.date.today()
 
 
+def hour_to_num(hour: str):
+    """
+    Convert hour name to integer
+
+    :param hour: the hour that you want to be converted to int
+    :type hour: str
+    :return: The hour as an integer.
+    """
+    if hour.lower() == "predura":
+        return int(0)
+    else:
+        return int(hour.split(". ura")[0])
+
+
 def get_schedule_data(
         school_id: str,
         class_id=0,
@@ -81,7 +95,7 @@ def get_schedule_data(
                                 school_week=school_week,
                                 student_id=student_id)
     soup = BeautifulSoup(response.text, "html5lib")
-    table_rows = soup.select("body > table > tbody > tr")
+    seznam_ur_teden = soup.select("body > table > tbody > tr")
 
     count: int = -1
 
@@ -89,56 +103,56 @@ def get_schedule_data(
     dates_formatted: list = []
     hour_times: list = []
 
-    scraped_data: dict = {str(i): {} for i in range(7)}
+    scraped_data: dict = {str(i): {str(j): {} for j in range(15)} for i in range(7)}
+    scraped_data["week_data"] = {"hour_times": [], "dates": [], "current_week": "", "class": ""}
 
     current_week = int("".join(re.findall("[0-9]", [item.text.split(",")[0] for item in soup.select("body > div > span")][0])))
     current_class = str([item.text.strip() for item in soup.select("body > div > strong")][0])
 
-    for table_row in table_rows:
+    for i in seznam_ur_teden:
         if count == -1:
-            for days in table_row:
+            for days in i:
                 if type(days) == bs4.element.Tag:
                     day = days.select("div")
                     if day[0].text != "Ura":
                         temp_date = re.findall(r"[^A-z,. ]+", day[1].text)
                         temp_datetime = datetime.datetime(
-                            day=int(temp_date[0]),
-                            month=int(temp_date[1]),
-                            year=today.year,
-                        )
+                                day=int(temp_date[0]),
+                                month=int(temp_date[1]),
+                                year=today.year,
+                            )
                         dates_formatted.append(str(temp_datetime.strftime("%Y-%m-%d")))
                         dates.append(temp_datetime)
         if count >= 0:
-            row = table_row.find_all("td", class_="ednevnik-seznam_ur_teden-td")
-            hour_name = str(row[0].find(class_="text14").text)
+            row = i.find_all("td", class_="ednevnik-seznam_ur_teden-td")
+            hour_name = row[0].find(class_="text14").text
             hour_time = row[0].find(class_="text10").text
             hour_times.append(hour_time)
-
+            hour_num = str(hour_to_num(hour_name))
+            hour_num = str(hour_num)
             count2: int = 0
-            for row_part in row:
+            for block in row:
                 if count2 != 0:
                     """Pass the first collum that contains hour times"""
                     date = dates[count2 - 1]
                     day_num = str(date.weekday())
                     date_formatted = str(date.strftime("%Y-%m-%d"))
-                    scraped_data[day_num].update({str(hour_name): {}})
-
-                    if "style" not in row_part.attrs:
+                    if "style" not in block.attrs:
                         data_out = {
                             "subject": None,
                             "teacher": None,
                             "classroom": None,
                             "group": None,
                             "event": None,
-                            "hour": hour_name,
+                            "hour": int(hour_num),
                             "week_day": int(day_num),
                             "hour_in_block": 0,
                             "date": date_formatted,
                         }
-                        scraped_data[day_num][hour_name]["0"] = data_out
+                        scraped_data[day_num][hour_num]["0"] = data_out
                     else:
                         classes_in_hour = 0
-                        for section in row_part:
+                        for section in block:
                             if type(section) == bs4.element.Tag:
                                 event = None
                                 subject = None
@@ -184,9 +198,10 @@ def get_schedule_data(
                                     teacher = teacher_classroom[0]
                                     classroom = teacher_classroom[1]
                                 except IndexError:
-                                    pass  # Makes it so empty strings don't crash the program
+                                    pass
                                 except AttributeError:
-                                    pass  # Makes it so empty strings don't crash the program
+                                    """Makes it so empty strings don't crash the program"""
+                                    pass
                                 if group_raw:
                                     for gr in group_raw:
                                         group.append(gr.text)
@@ -196,9 +211,9 @@ def get_schedule_data(
                                             section.attrs["id"],
                                         )
                                 ):
-                                    # Check for blocks
-                                    for block in section:
-                                        if type(block) == bs4.element.Tag:
+                                    """Check for blocks"""
+                                    for block_part in section:
+                                        if type(block_part) == bs4.element.Tag:
                                             event = None
                                             subject = None
                                             group_raw = None
@@ -206,7 +221,7 @@ def get_schedule_data(
                                             teacher = None
                                             classroom = None
                                             teacher_classroom = None
-                                            for img in block.select("img"):
+                                            for img in block_part.select("img"):
                                                 events_list = {
                                                     "Odpadla ura": "cancelled",
                                                     "Dogodek": "event",
@@ -227,15 +242,15 @@ def get_schedule_data(
                                                     event = "unknown_event"
                                             try:
                                                 subject = (
-                                                    block.find(class_="text14")
+                                                    block_part.find(class_="text14")
                                                         .text.replace("\n", "")
                                                         .replace("\t", "")
                                                 )
-                                                group_raw = block.find_all(
+                                                group_raw = block_part.find_all(
                                                     class_="text11 gray bold"
                                                 )
                                                 teacher_classroom = (
-                                                    block.find(class_="text11")
+                                                    block_part.find(class_="text11")
                                                         .text.replace("\n", "")
                                                         .replace("\t", "")
                                                         .replace("\r", "")
@@ -246,7 +261,8 @@ def get_schedule_data(
                                             except IndexError:
                                                 pass
                                             except AttributeError:
-                                                pass  # Makes it so empty strings don't crash the program
+                                                """Makes it so empty strings don't crash the program"""
+                                                pass
                                             if group_raw:
                                                 for gr in group_raw:
                                                     group.append(gr.text)
@@ -256,12 +272,12 @@ def get_schedule_data(
                                                 "classroom": classroom,
                                                 "group": group,
                                                 "event": event,
-                                                "hour": hour_name,
+                                                "hour": int(hour_num),
                                                 "week_day": int(day_num),
                                                 "hour_in_block": int(classes_in_hour),
                                                 "date": date_formatted,
                                             }
-                                            scraped_data[day_num][hour_name][
+                                            scraped_data[day_num][hour_num][
                                                 classes_in_hour
                                             ] = data_out
                                             classes_in_hour += 1
@@ -273,20 +289,20 @@ def get_schedule_data(
                                         "classroom": classroom,
                                         "group": group,
                                         "event": event,
-                                        "hour": hour_name,
+                                        "hour": int(hour_num),
                                         "week_day": int(day_num),
                                         "hour_in_block": int(classes_in_hour),
                                         "date": date_formatted,
                                     }
-                                    scraped_data[day_num][hour_name][
+                                    scraped_data[day_num][hour_num][
                                         classes_in_hour
                                     ] = data_out
                                     classes_in_hour += 1
                 count2 += 1
         count += 1
-    scraped_data["week_data"] = {"hour_times": [], "dates": [], "current_week": "", "class": ""}
     scraped_data["week_data"]["hour_times"] = hour_times
     scraped_data["week_data"]["dates"] = dates_formatted
     scraped_data["week_data"]["current_week"] = current_week
     scraped_data["week_data"]["class"] = current_class
+
     return scraped_data
