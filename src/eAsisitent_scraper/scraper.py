@@ -21,12 +21,12 @@ def request_schedule(
 
     :param school_id: The ID of the school you want to get data for
     :type school_id: str
-    :param class_id: The ID of the class you want to get data for, defaults to 0 (optional), defaults to 0 (optional)
-    :param professor: The ID of the professor you want to get data for, defaults to 0 (optional), defaults to 0 (optional)
-    :param classroom: The classroom you want to get data for, defaults to 0 (optional), defaults to 0 (optional)
-    :param interest_activity: The activity you want to get data for, defaults to 0 (optional)
-    :param school_week: 0 is the current week, 1 is the next week, 2 is the week after that, etc, defaults to 0 (optional)
-    :param student_id: The ID of the student you want to get the schedule for, defaults to 0 (optional)
+    :param class_id: The ID of the class you want to get data for, 0 is all classes, defaults to 0 (optional)
+    :param professor: The ID of the professor you want to get data for,  0 is all professors, defaults to 0 (optional)
+    :param classroom: The classroom you want to get data for,  0 is all classrooms, defaults to 0 (optional)
+    :param interest_activity: The activity you want to get data for, 0 is all interest activities, defaults to 0 (optional)
+    :param school_week: school week that you want to get the data for, 0 is the current week, defaults to 0 (optional)
+    :param student_id: The ID of the student you want to get the schedule for,0 is all students, defaults to 0 (optional)
     :param soup: Return a BeautifulSoup object (optional)
     :return: A response object is a requests.models.Response object.
 
@@ -62,18 +62,17 @@ def get_schedule_data(
 
     :param school_id: The ID of the school you want to get data for
     :type school_id: str
-    :param class_id: The ID of the class you want to get data for, defaults to 0 (optional), defaults to 0 (optional)
-    :param professor: The ID of the professor you want to get data for, defaults to 0 (optional), defaults to 0 (optional)
-    :param classroom: The classroom you want to get data for, defaults to 0 (optional), defaults to 0 (optional)
-    :param interest_activity: The activity you want to get data for, defaults to 0 (optional)
-    :param school_week: 0 is the current week, 1 is the next week, 2 is the week after that, etc, defaults to 0 (optional)
-    :param student_id: The ID of the student you want to get the schedule for, defaults to 0 (optional)
+    :param class_id: The ID of the class you want to get data for, 0 is all classes, defaults to 0 (optional)
+    :param professor: The ID of the professor you want to get data for,  0 is all professors, defaults to 0 (optional)
+    :param classroom: The classroom you want to get data for,  0 is all classrooms, defaults to 0 (optional)
+    :param interest_activity: The activity you want to get data for, 0 is all interest activities, defaults to 0 (optional)
+    :param school_week: school week that you want to get the data for, 0 is the current week, defaults to 0 (optional)
+    :param student_id: The ID of the student you want to get the schedule for,0 is all students, defaults to 0 (optional)
     :return: A dictionary with the data.
     """
 
     # TODO: reduce complexity of the function,
     #  better naming of variables,
-    #  get template for scraped_data from template.json
     response = request_schedule(school_id=school_id,
                                 class_id=class_id,
                                 professor=professor,
