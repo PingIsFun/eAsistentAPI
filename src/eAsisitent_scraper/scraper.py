@@ -1,7 +1,8 @@
+import bs4.element
 import datetime
 import re
 import requests
-import bs4.element
+import time
 
 from bs4 import BeautifulSoup
 
@@ -80,6 +81,9 @@ def get_schedule_data(
                                 interest_activity=interest_activity,
                                 school_week=school_week,
                                 student_id=student_id)
+
+    request_time = int(time.time())
+
     soup = BeautifulSoup(response.text, "html5lib")
     table_rows = soup.select("body > table > tbody > tr")
 
@@ -289,4 +293,6 @@ def get_schedule_data(
     scraped_data["week_data"]["dates"] = dates_formatted
     scraped_data["week_data"]["current_week"] = current_week
     scraped_data["week_data"]["class"] = current_class
+    scraped_data["week_data"]["request_epoch"] = request_time
+
     return scraped_data
