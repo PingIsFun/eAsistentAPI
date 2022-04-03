@@ -268,7 +268,7 @@ def get_schedule_data(
                                                 "date": date_formatted,
                                             }
                                             scraped_data[day_num][hour_name][
-                                                classes_in_hour
+                                                str(classes_in_hour)
                                             ] = data_out
                                             classes_in_hour += 1
 
@@ -285,7 +285,7 @@ def get_schedule_data(
                                         "date": date_formatted,
                                     }
                                     scraped_data[day_num][hour_name][
-                                        classes_in_hour
+                                        str(classes_in_hour)
                                     ] = data_out
                                     classes_in_hour += 1
                 count2 += 1
