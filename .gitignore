@@ -14,6 +14,7 @@ Pipfile.lock
 random_code/
 dist/
 src/eAsistent_scraper.egg-info/
+git_hidden/
 
 # Not done yet
 tests/
