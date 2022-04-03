@@ -93,7 +93,7 @@ def get_schedule_data(
     dates_formatted: list = []
     hour_times: list = []
 
-    scraped_data: dict = {str(i): {} for i in range(7)}
+    scraped_data: dict = {}
 
     current_week = int("".join(re.findall("[0-9]", [item.text.split(",")[0] for item in soup.select("body > div > span")][0])))
     current_class = str([item.text.strip() for item in soup.select("body > div > strong")][0])
@@ -115,7 +115,7 @@ def get_schedule_data(
         if count >= 0:
             row = table_row.find_all("td", class_="ednevnik-seznam_ur_teden-td")
             hour_name = str(row[0].find(class_="text14").text)
-            hour_time = row[0].find(class_="text10").text
+            hour_time = row[0].find(class_="text10").text.replace(" ", "")
             hour_times.append(hour_time)
 
             count2: int = 0
@@ -125,6 +125,8 @@ def get_schedule_data(
                     date = dates[count2 - 1]
                     day_num = str(date.weekday())
                     date_formatted = str(date.strftime("%Y-%m-%d"))
+                    if day_num not in scraped_data.keys():
+                        scraped_data.update({str(day_num): {}})
                     scraped_data[day_num].update({str(hour_name): {}})
 
                     if "style" not in row_part.attrs:
@@ -288,11 +290,11 @@ def get_schedule_data(
                                     classes_in_hour += 1
                 count2 += 1
         count += 1
-    scraped_data["week_data"] = {"hour_times": [], "dates": [], "current_week": "", "class": ""}
-    scraped_data["week_data"]["hour_times"] = hour_times
-    scraped_data["week_data"]["dates"] = dates_formatted
-    scraped_data["week_data"]["current_week"] = current_week
-    scraped_data["week_data"]["class"] = current_class
-    scraped_data["week_data"]["request_epoch"] = request_time
+    scraped_data["request_data"] = {}
+    scraped_data["request_data"]["hour_times"] = hour_times
+    scraped_data["request_data"]["dates"] = dates_formatted
+    scraped_data["request_data"]["class"] = current_class
+    scraped_data["request_data"]["request_week"] = current_week
+    scraped_data["request_data"]["request_epoch"] = request_time
 
     return scraped_data
