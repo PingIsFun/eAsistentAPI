@@ -8,14 +8,14 @@ from bs4 import BeautifulSoup
 
 
 def request_schedule(
-        school_id: str,
-        class_id=0,
-        professor=0,
-        classroom=0,
-        interest_activity=0,
-        school_week=0,
-        student_id=0,
-        soup=False
+    school_id: str,
+    class_id=0,
+    professor=0,
+    classroom=0,
+    interest_activity=0,
+    school_week=0,
+    student_id=0,
+    soup=False,
 ):
     """
     It requests schedule from easistent.com and returns it as a response
@@ -49,13 +49,13 @@ today = datetime.date.today()
 
 
 def get_schedule_data(
-        school_id: str,
-        class_id=0,
-        professor=0,
-        classroom=0,
-        interest_activity=0,
-        school_week=0,
-        student_id=0,
+    school_id: str,
+    class_id=0,
+    professor=0,
+    classroom=0,
+    interest_activity=0,
+    school_week=0,
+    student_id=0,
 ):
     """
     Date format is: YYYY-MM-DD
@@ -74,13 +74,15 @@ def get_schedule_data(
 
     # TODO: reduce complexity of the function,
     #  better naming of variables,
-    response = request_schedule(school_id=school_id,
-                                class_id=class_id,
-                                professor=professor,
-                                classroom=classroom,
-                                interest_activity=interest_activity,
-                                school_week=school_week,
-                                student_id=student_id)
+    response = request_schedule(
+        school_id=school_id,
+        class_id=class_id,
+        professor=professor,
+        classroom=classroom,
+        interest_activity=interest_activity,
+        school_week=school_week,
+        student_id=student_id,
+    )
 
     request_time = int(time.time())
 
@@ -95,8 +97,19 @@ def get_schedule_data(
 
     scraped_data: dict = {}
 
-    current_week = int("".join(re.findall("[0-9]", [item.text.split(",")[0] for item in soup.select("body > div > span")][0])))
-    current_class = str([item.text.strip() for item in soup.select("body > div > strong")][0])
+    current_week = int(
+        "".join(
+            re.findall(
+                "[0-9]",
+                [item.text.split(",")[0] for item in soup.select("body > div > span")][
+                    0
+                ],
+            )
+        )
+    )
+    current_class = str(
+        [item.text.strip() for item in soup.select("body > div > strong")][0]
+    )
 
     for table_row in table_rows:
         if count == -1:
@@ -163,7 +176,7 @@ def get_schedule_data(
                                         "Interesna dejavnost": "activity",
                                         "Zaposlitev": "occupation",
                                         "Neopravljena ura": "unfinished_hour",
-                                        "Govorilne ure": "office hours",
+                                        "Govorilne ure": "office_hours",
                                         "Izpiti": "exams",
                                     }
                                     try:
@@ -174,33 +187,36 @@ def get_schedule_data(
                                 try:
                                     subject = (
                                         section.find(class_="text14")
-                                            .text.replace("\n", "")
-                                            .replace("\t", "")
+                                        .text.replace("\n", "")
+                                        .replace("\t", "")
                                     )
                                     group_raw = section.find_all(
                                         class_="text11 gray bold"
                                     )
                                     teacher_classroom = (
                                         section.find(class_="text11")
-                                            .text.replace("\n", "")
-                                            .replace("\t", "")
-                                            .replace("\r", "")
-                                            .split(", ")
+                                        .text.replace("\n", "")
+                                        .replace("\t", "")
+                                        .replace("\r", "")
+                                        .split(", ")
                                     )
                                     teacher = teacher_classroom[0]
                                     classroom = teacher_classroom[1]
                                 except IndexError:
-                                    pass  # Makes it so empty strings don't crash the program
+                                    pass  # Makes it so empty strings don't
+                                    # crash the program
                                 except AttributeError:
-                                    pass  # Makes it so empty strings don't crash the program
+                                    pass  # Makes it so empty strings don't
+                                    # crash the program
                                 if group_raw:
                                     for gr in group_raw:
                                         group.append(gr.text)
                                 if ("id" in section.attrs) and bool(
-                                        re.match(
-                                            r"ednevnik-seznam_ur_teden-blok-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
-                                            section.attrs["id"],
-                                        )
+                                    re.match(
+                                        r"ednevnik-seznam_ur_teden-blok"
+                                        r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
+                                        section.attrs["id"],
+                                    )
                                 ):
                                     # Check for blocks
                                     for block in section:
@@ -234,25 +250,27 @@ def get_schedule_data(
                                             try:
                                                 subject = (
                                                     block.find(class_="text14")
-                                                        .text.replace("\n", "")
-                                                        .replace("\t", "")
+                                                    .text.replace("\n", "")
+                                                    .replace("\t", "")
                                                 )
                                                 group_raw = block.find_all(
                                                     class_="text11 gray bold"
                                                 )
                                                 teacher_classroom = (
                                                     block.find(class_="text11")
-                                                        .text.replace("\n", "")
-                                                        .replace("\t", "")
-                                                        .replace("\r", "")
-                                                        .split(", ")
+                                                    .text.replace("\n", "")
+                                                    .replace("\t", "")
+                                                    .replace("\r", "")
+                                                    .split(", ")
                                                 )
                                                 teacher = teacher_classroom[0]
                                                 classroom = teacher_classroom[1]
                                             except IndexError:
                                                 pass
                                             except AttributeError:
-                                                pass  # Makes it so empty strings don't crash the program
+                                                pass  # Makes it so empty
+                                                # strings don't crash the
+                                                # program
                                             if group_raw:
                                                 for gr in group_raw:
                                                     group.append(gr.text)
