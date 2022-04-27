@@ -8,14 +8,14 @@ from bs4 import BeautifulSoup
 
 
 def request_schedule(
-    school_id: str,
-    class_id=0,
-    professor=0,
-    classroom=0,
-    interest_activity=0,
-    school_week=0,
-    student_id=0,
-    soup=False,
+        school_id: str,
+        class_id=0,
+        professor=0,
+        classroom=0,
+        interest_activity=0,
+        school_week=0,
+        student_id=0,
+        soup=False,
 ):
     """
     It requests schedule from easistent.com and returns it as a response
@@ -49,13 +49,13 @@ today = datetime.date.today()
 
 
 def get_schedule_data(
-    school_id: str,
-    class_id=0,
-    professor=0,
-    classroom=0,
-    interest_activity=0,
-    school_week=0,
-    student_id=0,
+        school_id: str,
+        class_id=0,
+        professor=0,
+        classroom=0,
+        interest_activity=0,
+        school_week=0,
+        student_id=0,
 ):
     """
     Date format is: YYYY-MM-DD
@@ -101,7 +101,8 @@ def get_schedule_data(
         "".join(
             re.findall(
                 "[0-9]",
-                [item.text.split(",")[0] for item in soup.select("body > div > span")][
+                [item.text.split(",")[0] for item in
+                 soup.select("body > div > span")][
                     0
                 ],
             )
@@ -123,10 +124,12 @@ def get_schedule_data(
                             month=int(temp_date[1]),
                             year=today.year,
                         )
-                        dates_formatted.append(str(temp_datetime.strftime("%Y-%m-%d")))
+                        dates_formatted.append(
+                            str(temp_datetime.strftime("%Y-%m-%d")))
                         dates.append(temp_datetime)
         if count >= 0:
-            row = table_row.find_all("td", class_="ednevnik-seznam_ur_teden-td")
+            row = table_row.find_all("td",
+                                     class_="ednevnik-seznam_ur_teden-td")
             hour_name = str(row[0].find(class_="text14").text)
             hour_time = row[0].find(class_="text10").text.replace(" ", "")
             hour_times.append(hour_time)
@@ -187,18 +190,18 @@ def get_schedule_data(
                                 try:
                                     subject = (
                                         section.find(class_="text14")
-                                        .text.replace("\n", "")
-                                        .replace("\t", "")
+                                            .text.replace("\n", "")
+                                            .replace("\t", "")
                                     )
                                     group_raw = section.find_all(
                                         class_="text11 gray bold"
                                     )
                                     teacher_classroom = (
                                         section.find(class_="text11")
-                                        .text.replace("\n", "")
-                                        .replace("\t", "")
-                                        .replace("\r", "")
-                                        .split(", ")
+                                            .text.replace("\n", "")
+                                            .replace("\t", "")
+                                            .replace("\r", "")
+                                            .split(", ")
                                     )
                                     teacher = teacher_classroom[0]
                                     classroom = teacher_classroom[1]
@@ -212,11 +215,11 @@ def get_schedule_data(
                                     for gr in group_raw:
                                         group.append(gr.text)
                                 if ("id" in section.attrs) and bool(
-                                    re.match(
-                                        r"ednevnik-seznam_ur_teden-blok"
-                                        r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
-                                        section.attrs["id"],
-                                    )
+                                        re.match(
+                                            r"ednevnik-seznam_ur_teden-blok"
+                                            r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
+                                            section.attrs["id"],
+                                        )
                                 ):
                                     # Check for blocks
                                     for block in section:
@@ -250,21 +253,22 @@ def get_schedule_data(
                                             try:
                                                 subject = (
                                                     block.find(class_="text14")
-                                                    .text.replace("\n", "")
-                                                    .replace("\t", "")
+                                                        .text.replace("\n", "")
+                                                        .replace("\t", "")
                                                 )
                                                 group_raw = block.find_all(
                                                     class_="text11 gray bold"
                                                 )
                                                 teacher_classroom = (
                                                     block.find(class_="text11")
-                                                    .text.replace("\n", "")
-                                                    .replace("\t", "")
-                                                    .replace("\r", "")
-                                                    .split(", ")
+                                                        .text.replace("\n", "")
+                                                        .replace("\t", "")
+                                                        .replace("\r", "")
+                                                        .split(", ")
                                                 )
                                                 teacher = teacher_classroom[0]
-                                                classroom = teacher_classroom[1]
+                                                classroom = teacher_classroom[
+                                                    1]
                                             except IndexError:
                                                 pass
                                             except AttributeError:
@@ -282,7 +286,8 @@ def get_schedule_data(
                                                 "event": event,
                                                 "hour": hour_name,
                                                 "week_day": int(day_num),
-                                                "hour_in_block": int(classes_in_hour),
+                                                "hour_in_block": int(
+                                                    classes_in_hour),
                                                 "date": date_formatted,
                                             }
                                             scraped_data[day_num][hour_name][
@@ -314,5 +319,15 @@ def get_schedule_data(
     scraped_data["request_data"]["class"] = current_class
     scraped_data["request_data"]["request_week"] = current_week
     scraped_data["request_data"]["request_epoch"] = request_time
+    scraped_data["request_data"]["used_data"] = \
+        {
+            "school_id": school_id,
+            "class_id": class_id,
+            "professor": professor,
+            "classroom": classroom,
+            "interest_activity": interest_activity,
+            "school_week": school_week,
+            "student_id": student_id
+        }
 
     return scraped_data
