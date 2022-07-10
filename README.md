@@ -1,3 +1,6 @@
+# THIS REPOSITORY IS NOW ARCHIVED
+
+
 # eAsistent scraper (WIP)
 ***
 Scrapes data from *easistent.com/urniki/...* and returns it as Python dictionary
