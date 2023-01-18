@@ -7,6 +7,22 @@ import time
 from bs4 import BeautifulSoup
 
 
+def get_dates(table_row: bs4.element.Tag) -> list[datetime.datetime]:
+    dates: list = []
+    for days in table_row:
+        if type(days) == bs4.element.Tag:
+            day = days.select("div")
+            if day[0].text != "Ura":
+                temp_date = re.findall(r"[^A-z,. ]+", day[1].text)
+                temp_datetime = datetime.datetime(
+                    day=int(temp_date[0]),
+                    month=int(temp_date[1]),
+                    year=today.year,
+                )
+                dates.append(temp_datetime)
+    return dates
+
+
 def request_schedule(
         school_id: str,
         class_id=0,
@@ -91,8 +107,7 @@ def get_schedule_data(
 
     count: int = -1
 
-    dates: list = []
-    dates_formatted: list = []
+    # x.strftime("%Y-%m-%d")
     hour_times: list = []
 
     scraped_data: dict = {}
@@ -113,20 +128,10 @@ def get_schedule_data(
     )
 
     for table_row in table_rows:
+        print(type(table_row))
         if count == -1:
-            for days in table_row:
-                if type(days) == bs4.element.Tag:
-                    day = days.select("div")
-                    if day[0].text != "Ura":
-                        temp_date = re.findall(r"[^A-z,. ]+", day[1].text)
-                        temp_datetime = datetime.datetime(
-                            day=int(temp_date[0]),
-                            month=int(temp_date[1]),
-                            year=today.year,
-                        )
-                        dates_formatted.append(
-                            str(temp_datetime.strftime("%Y-%m-%d")))
-                        dates.append(temp_datetime)
+            dates = get_dates(table_row)
+
         if count >= 0:
             row = table_row.find_all("td",
                                      class_="ednevnik-seznam_ur_teden-td")
@@ -190,18 +195,18 @@ def get_schedule_data(
                                 try:
                                     subject = (
                                         section.find(class_="text14")
-                                            .text.replace("\n", "")
-                                            .replace("\t", "")
+                                        .text.replace("\n", "")
+                                        .replace("\t", "")
                                     )
                                     group_raw = section.find_all(
                                         class_="text11 gray bold"
                                     )
                                     teacher_classroom = (
                                         section.find(class_="text11")
-                                            .text.replace("\n", "")
-                                            .replace("\t", "")
-                                            .replace("\r", "")
-                                            .split(", ")
+                                        .text.replace("\n", "")
+                                        .replace("\t", "")
+                                        .replace("\r", "")
+                                        .split(", ")
                                     )
                                     teacher = teacher_classroom[0]
                                     classroom = teacher_classroom[1]
@@ -253,18 +258,18 @@ def get_schedule_data(
                                             try:
                                                 subject = (
                                                     block.find(class_="text14")
-                                                        .text.replace("\n", "")
-                                                        .replace("\t", "")
+                                                    .text.replace("\n", "")
+                                                    .replace("\t", "")
                                                 )
                                                 group_raw = block.find_all(
                                                     class_="text11 gray bold"
                                                 )
                                                 teacher_classroom = (
                                                     block.find(class_="text11")
-                                                        .text.replace("\n", "")
-                                                        .replace("\t", "")
-                                                        .replace("\r", "")
-                                                        .split(", ")
+                                                    .text.replace("\n", "")
+                                                    .replace("\t", "")
+                                                    .replace("\r", "")
+                                                    .split(", ")
                                                 )
                                                 teacher = teacher_classroom[0]
                                                 classroom = teacher_classroom[
@@ -315,7 +320,7 @@ def get_schedule_data(
         count += 1
     scraped_data["request_data"] = {}
     scraped_data["request_data"]["hour_times"] = hour_times
-    scraped_data["request_data"]["dates"] = dates_formatted
+    scraped_data["request_data"]["dates"] = [x.strftime("%Y-%m-%d") for x in dates]
     scraped_data["request_data"]["class"] = current_class
     scraped_data["request_data"]["request_week"] = current_week
     scraped_data["request_data"]["request_epoch"] = request_time
