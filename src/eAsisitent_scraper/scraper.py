@@ -3,8 +3,42 @@ import datetime
 import re
 import requests
 import time
+from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
+
+EVENT_MAP = {
+    "Odpadla ura": "cancelled",
+    "Dogodek": "event",
+    "Nadomeščanje": "substitute",
+    "Polovična ura": "half_hour",
+    "Videokonferenca": "video_call",
+    "Interesna dejavnost": "activity",
+    "Zaposlitev": "occupation",
+    "Neopravljena ura": "unfinished_hour",
+    "Govorilne ure": "office hours",
+    "Izpiti": "exams",
+}
+
+
+@dataclass()
+class Formatting:
+    SUBJECT_CLASS = "text14"
+    RAW_GROUP_CLASS = "text11 gray bold"
+    TEACHER_CLASSROOM_CLASS = "text11"
+
+
+def get_hour_data(section) -> tuple[str, str, str]:
+    subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
+    group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
+    teacher_classroom = (
+        section.find(class_=Formatting.TEACHER_CLASSROOM_CLASS)
+        .text.replace("\n", "")
+        .replace("\t", "")
+        .replace("\r", "")
+        .split(", ")
+    )
+    return subject, group_raw, teacher_classroom
 
 
 def format_date(date: datetime.date) -> str:
@@ -27,7 +61,7 @@ def get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
     return dates
 
 
-def get_hour_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
+def get_hours_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
     hour_name = str(row[0].find(class_="text14").text)
     hour_time = str(row[0].find(class_="text10").text.replace(" ", ""))
     return hour_name, hour_time
@@ -116,7 +150,7 @@ def get_schedule_data(
     table_rows = soup.select("body > table > tbody > tr")
 
     hour_times: list = []
-
+    dates: list[datetime.date] = []
     scraped_data: dict = {}
 
     current_week = int(
@@ -141,7 +175,7 @@ def get_schedule_data(
         if count >= 1:
             row = table_row.find_all("td",
                                      class_="ednevnik-seznam_ur_teden-td")
-            hour_name, hour_time = get_hour_time_data(row)
+            hour_name, hour_time = get_hours_time_data(row)
             hour_times.append(hour_time)
 
             for count2, row_part in enumerate(row):
@@ -149,7 +183,7 @@ def get_schedule_data(
                     """Pass the first collum that contains hour times"""
                     date = dates[count2 - 1]
                     day_num = str(date.weekday())
-                    date_formatted = str(date.strftime("%Y-%m-%d"))
+                    date_formatted = format_date(date)
                     if day_num not in scraped_data.keys():
                         scraped_data.update({str(day_num): {}})
                     scraped_data[day_num].update({str(hour_name): {}})
@@ -177,41 +211,14 @@ def get_schedule_data(
                                 group = []
                                 teacher = None
                                 classroom = None
-                                teacher_classroom = None
                                 for img in section.select("img"):
-                                    events_list = {
-                                        "Odpadla ura": "cancelled",
-                                        "Dogodek": "event",
-                                        "Nadomeščanje": "substitute",
-                                        "Polovična ura": "half_hour",
-                                        "Videokonferenca": "video_call",
-                                        "Interesna dejavnost": "activity",
-                                        "Zaposlitev": "occupation",
-                                        "Neopravljena ura": "unfinished_hour",
-                                        "Govorilne ure": "office_hours",
-                                        "Izpiti": "exams",
-                                    }
                                     try:
-                                        event = events_list[img.attrs["title"]]
+                                        event = EVENT_MAP[img.attrs["title"]]
                                     except KeyError:
                                         event = "unknown_event"
 
                                 try:
-                                    subject = (
-                                        section.find(class_="text14")
-                                        .text.replace("\n", "")
-                                        .replace("\t", "")
-                                    )
-                                    group_raw = section.find_all(
-                                        class_="text11 gray bold"
-                                    )
-                                    teacher_classroom = (
-                                        section.find(class_="text11")
-                                        .text.replace("\n", "")
-                                        .replace("\t", "")
-                                        .replace("\r", "")
-                                        .split(", ")
-                                    )
+                                    subject, group_raw, teacher_classroom = get_hour_data(section)
                                     teacher = teacher_classroom[0]
                                     classroom = teacher_classroom[1]
                                 except IndexError:
@@ -239,42 +246,15 @@ def get_schedule_data(
                                             group = []
                                             teacher = None
                                             classroom = None
-                                            teacher_classroom = None
                                             for img in block.select("img"):
-                                                events_list = {
-                                                    "Odpadla ura": "cancelled",
-                                                    "Dogodek": "event",
-                                                    "Nadomeščanje": "substitute",
-                                                    "Polovična ura": "half_hour",
-                                                    "Videokonferenca": "video_call",
-                                                    "Interesna dejavnost": "activity",
-                                                    "Zaposlitev": "occupation",
-                                                    "Neopravljena ura": "unfinished_hour",
-                                                    "Govorilne ure": "office hours",
-                                                    "Izpiti": "exams",
-                                                }
                                                 try:
-                                                    event = events_list[
+                                                    event = EVENT_MAP[
                                                         img.attrs["title"]
                                                     ]
                                                 except KeyError:
                                                     event = "unknown_event"
                                             try:
-                                                subject = (
-                                                    block.find(class_="text14")
-                                                    .text.replace("\n", "")
-                                                    .replace("\t", "")
-                                                )
-                                                group_raw = block.find_all(
-                                                    class_="text11 gray bold"
-                                                )
-                                                teacher_classroom = (
-                                                    block.find(class_="text11")
-                                                    .text.replace("\n", "")
-                                                    .replace("\t", "")
-                                                    .replace("\r", "")
-                                                    .split(", ")
-                                                )
+                                                subject, group_raw, teacher_classroom = get_hour_data(section)
                                                 teacher = teacher_classroom[0]
                                                 classroom = teacher_classroom[
                                                     1]
@@ -322,7 +302,7 @@ def get_schedule_data(
                                     classes_in_hour += 1
     scraped_data["request_data"] = {}
     scraped_data["request_data"]["hour_times"] = hour_times
-    scraped_data["request_data"]["dates"] = [x.strftime("%Y-%m-%d") for x in dates]
+    scraped_data["request_data"]["dates"] = [format_date(x) for x in dates]
     scraped_data["request_data"]["class"] = current_class
     scraped_data["request_data"]["request_week"] = current_week
     scraped_data["request_data"]["request_epoch"] = request_time
