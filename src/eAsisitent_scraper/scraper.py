@@ -7,14 +7,18 @@ import time
 from bs4 import BeautifulSoup
 
 
-def get_dates(table_row: bs4.element.Tag) -> list[datetime.datetime]:
+def format_date(date: datetime.date) -> str:
+    return str(date.strftime("%Y-%m-%d"))
+
+
+def get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
     dates: list = []
     for days in table_row:
         if type(days) == bs4.element.Tag:
             day = days.select("div")
             if day[0].text != "Ura":
                 temp_date = re.findall(r"[^A-z,. ]+", day[1].text)
-                temp_datetime = datetime.datetime(
+                temp_datetime = datetime.date(
                     day=int(temp_date[0]),
                     month=int(temp_date[1]),
                     year=today.year,
