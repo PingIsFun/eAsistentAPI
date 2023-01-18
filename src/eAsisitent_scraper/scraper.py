@@ -23,6 +23,12 @@ def get_dates(table_row: bs4.element.Tag) -> list[datetime.datetime]:
     return dates
 
 
+def get_hour_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
+    hour_name = str(row[0].find(class_="text14").text)
+    hour_time = str(row[0].find(class_="text10").text.replace(" ", ""))
+    return hour_name, hour_time
+
+
 def request_schedule(
         school_id: str,
         class_id=0,
@@ -105,9 +111,6 @@ def get_schedule_data(
     soup = BeautifulSoup(response.text, "html5lib")
     table_rows = soup.select("body > table > tbody > tr")
 
-    count: int = -1
-
-    # x.strftime("%Y-%m-%d")
     hour_times: list = []
 
     scraped_data: dict = {}
@@ -127,20 +130,17 @@ def get_schedule_data(
         [item.text.strip() for item in soup.select("body > div > strong")][0]
     )
 
-    for table_row in table_rows:
-        print(type(table_row))
-        if count == -1:
+    for count, table_row in enumerate(table_rows):
+        if count == 0:
             dates = get_dates(table_row)
 
-        if count >= 0:
+        if count >= 1:
             row = table_row.find_all("td",
                                      class_="ednevnik-seznam_ur_teden-td")
-            hour_name = str(row[0].find(class_="text14").text)
-            hour_time = row[0].find(class_="text10").text.replace(" ", "")
+            hour_name, hour_time = get_hour_time_data(row)
             hour_times.append(hour_time)
 
-            count2: int = 0
-            for row_part in row:
+            for count2, row_part in enumerate(row):
                 if count2 != 0:
                     """Pass the first collum that contains hour times"""
                     date = dates[count2 - 1]
@@ -316,8 +316,6 @@ def get_schedule_data(
                                         str(classes_in_hour)
                                     ] = data_out
                                     classes_in_hour += 1
-                count2 += 1
-        count += 1
     scraped_data["request_data"] = {}
     scraped_data["request_data"]["hour_times"] = hour_times
     scraped_data["request_data"]["dates"] = [x.strftime("%Y-%m-%d") for x in dates]
