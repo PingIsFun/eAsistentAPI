@@ -28,6 +28,40 @@ class Formatting:
     TEACHER_CLASSROOM_CLASS = "text11"
 
 
+@dataclass()
+class HourBlock:
+    subject: str
+    teacher: str
+    classroom: str
+    group: list[str]
+    event: str
+    hour: str
+    hour_in_block: int
+
+
+@dataclass()
+class Hour:
+    name: str
+    blocks: list[HourBlock]
+
+
+@dataclass()
+class SchoolDay:
+    date: datetime
+    hours: list[Hour]
+
+
+@dataclass()
+class Schedule:
+    days: list[SchoolDay]
+    hour_times: list[str]
+    dates: list[str]
+    class_name: str
+    request_week: int
+    request_epoch: int
+    used_data: dict
+
+
 def get_hour_data(section) -> tuple[str, str, str]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
     group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
