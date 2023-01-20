@@ -66,11 +66,11 @@ class Schedule:
     used_data: dict
 
 
-def get_hour_data(section: bs4.element.Tag) -> tuple[str, str, str]:
+def get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
     group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
     try:
-        teacher_classroom = (
+        teacher_classroom = list(
             section.find(class_=Formatting.TEACHER_CLASSROOM_CLASS)
             .text.replace("\n", "")
             .replace("\t", "")
@@ -80,34 +80,12 @@ def get_hour_data(section: bs4.element.Tag) -> tuple[str, str, str]:
     except AttributeError:
         subject = section.find(class_=Formatting.EVENT_CLASS).text.replace("\n", "").replace("\t", "")
         teacher_classroom = [None, None]
-    # print("--------------")
-    # print(section)
-    # print(repr(event))
     return subject, group_raw, teacher_classroom
 
 
-def make_data_out(
-        date: datetime.date,
-        subject: str = None,
-        teacher: str = None,
-        classroom: str = None,
-        group: list = None,
-        event: str = None,
-        hour_name: str = None,
-        week_day: str = None,
-        hour_in_block: int = None
-) -> dict:
-    return {
-        "subject": subject,
-        "teacher": teacher,
-        "classroom": classroom,
-        "group": group,
-        "event": event,
-        "hour": hour_name,
-        "week_day": int(week_day),
-        "hour_in_block": hour_in_block,
-        "date": format_date(date),
-    }
+def get_event(section: bs4.element.Tag) -> str:
+    for img in section.select("img"):
+        return img.attrs["title"]
 
 
 def make_data_out_v2(
@@ -235,7 +213,6 @@ def get_schedule_data(
 
     hour_times: list = []
     dates: list[datetime.date] = []
-    scraped_data: dict = {}
 
     current_week = int(
         "".join(
@@ -268,32 +245,23 @@ def get_schedule_data(
                 """Pass the first collum that contains hour times"""
                 date = dates[count2 - 1]
                 day_num = str(date.weekday())
-                if day_num not in scraped_data.keys():
-                    scraped_data.update({str(day_num): []})
-                scraped_data[day_num].append(Hour(hour_name, []))
-
                 if "style" not in row_part.attrs:  # Detect empty hours
                     data_out = make_data_out_v2(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
-                    # scraped_data[day_num][count - 1].blocks.append(data_out)
                     bundle_hour_block.blocks.append(data_out)
                 else:
                     classes_in_hour = 0
                     for section in row_part:
                         if type(section) != bs4.element.Tag:
                             continue
-                        event = None
                         group = []
-                        for img in section.select("img"):
-                            try:
-                                event = EVENT_MAP[img.attrs["title"]]
-                            except KeyError:
-                                event = "unknown_event"
+                        event = get_event(section)
                         subject, group_raw, teacher_classroom = get_hour_data(section)
                         teacher = teacher_classroom[0]
                         hour_classroom = teacher_classroom[1]
                         if group_raw:
                             for gr in group_raw:
                                 group.append(gr.text)
+
                         is_block_hour = ("id" in section.attrs) and bool(
                             re.match(
                                 r"ednevnik-seznam_ur_teden-blok"
@@ -306,15 +274,8 @@ def get_schedule_data(
                             # Check for blocks
                             for block in section:
                                 if type(block) == bs4.element.Tag:
-                                    event = None
                                     group = []
-                                    for img in block.select("img"):
-                                        try:
-                                            event = EVENT_MAP[
-                                                img.attrs["title"]
-                                            ]
-                                        except KeyError:
-                                            event = "unknown_event"
+                                    event = get_event(section)
                                     subject, group_raw, teacher_classroom = get_hour_data(section)
                                     teacher = teacher_classroom[0]
                                     hour_classroom = teacher_classroom[1]
@@ -325,17 +286,11 @@ def get_schedule_data(
                                         date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                                     )
                                     bundle_hour_block.blocks.append(data_out)
-
-                                    # print(data_out)
-
-                                    # scraped_data[day_num][count - 1].blocks.append(data_out)
                                     classes_in_hour += 1
                         else:
                             data_out = make_data_out_v2(
                                 date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                             )
-                            # print(data_out)
-                            # scraped_data[day_num][count - 1].blocks.append(data_out)
                             bundle_hour_block.blocks.append(data_out)
 
                             classes_in_hour += 1
@@ -343,12 +298,12 @@ def get_schedule_data(
         finla_bundle_pre_turn.append(bundle_hour)
     r = [SchoolDay(None, list(x)) for x in list(zip(*finla_bundle_pre_turn))]
     used_data = {
-            "school_id": school_id,
-            "class_id": class_id,
-            "professor": professor,
-            "classroom": classroom,
-            "interest_activity": interest_activity,
-            "school_week": school_week,
-            "student_id": student_id
-        }
+        "school_id": school_id,
+        "class_id": class_id,
+        "professor": professor,
+        "classroom": classroom,
+        "interest_activity": interest_activity,
+        "school_week": school_week,
+        "student_id": student_id
+    }
     return Schedule(r, hour_times, dates, class_name, current_week, request_time, used_data)
