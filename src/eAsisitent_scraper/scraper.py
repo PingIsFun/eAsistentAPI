@@ -15,7 +15,7 @@ class Formatting:
     RAW_GROUP_CLASS = "text11 gray bold"
     TEACHER_CLASSROOM_CLASS = "text11"
     EVENT_CLASS = "text14"
-    EVENT_STYLE = "border:none"
+    CLASS_NAME_CLASS = "text20"
 
 
 @dataclass()
@@ -255,6 +255,6 @@ def get_schedule_data(
                             classes_in_hour += 1
                 bundle_hour.append(bundle_hour_block)
         final_bundle_pre_turn.append(bundle_hour)
-    school_days_list = [SchoolDay(None, list(x)) for x in list(zip(*final_bundle_pre_turn))]
+    school_days_list = [SchoolDay(dates[index], list(x)) for index, x in enumerate(list(zip(*final_bundle_pre_turn)))]
     used_data = UsedData(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
     return Schedule(school_days_list, hour_times, dates, class_name, current_week, request_time, used_data)
