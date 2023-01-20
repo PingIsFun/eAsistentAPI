@@ -26,6 +26,8 @@ class Formatting:
     SUBJECT_CLASS = "text14"
     RAW_GROUP_CLASS = "text11 gray bold"
     TEACHER_CLASSROOM_CLASS = "text11"
+    EVENT_CLASS = "text14"
+    EVENT_STYLE = "border:none"
 
 
 @dataclass()
@@ -37,6 +39,8 @@ class HourBlock:
     event: str
     hour: str
     hour_in_block: int
+    date: datetime.date
+    debug: str = None
 
 
 @dataclass()
@@ -55,23 +59,30 @@ class SchoolDay:
 class Schedule:
     days: list[SchoolDay]
     hour_times: list[str]
-    dates: list[str]
+    dates: list[datetime.date]
     class_name: str
     request_week: int
     request_epoch: int
     used_data: dict
 
 
-def get_hour_data(section) -> tuple[str, str, str]:
+def get_hour_data(section: bs4.element.Tag) -> tuple[str, str, str]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
     group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
-    teacher_classroom = (
-        section.find(class_=Formatting.TEACHER_CLASSROOM_CLASS)
-        .text.replace("\n", "")
-        .replace("\t", "")
-        .replace("\r", "")
-        .split(", ")
-    )
+    try:
+        teacher_classroom = (
+            section.find(class_=Formatting.TEACHER_CLASSROOM_CLASS)
+            .text.replace("\n", "")
+            .replace("\t", "")
+            .replace("\r", "")
+            .split(", ")
+        )
+    except AttributeError:
+        subject = section.find(class_=Formatting.EVENT_CLASS).text.replace("\n", "").replace("\t", "")
+        teacher_classroom = [None, None]
+    # print("--------------")
+    # print(section)
+    # print(repr(event))
     return subject, group_raw, teacher_classroom
 
 
@@ -97,6 +108,21 @@ def make_data_out(
         "hour_in_block": hour_in_block,
         "date": format_date(date),
     }
+
+
+def make_data_out_v2(
+        date: datetime.date,
+        subject: str = None,
+        teacher: str = None,
+        classroom: str = None,
+        group: list = None,
+        event: str = None,
+        hour_name: str = None,
+        week_day: str = None,
+        hour_in_block: int = None,
+        debug=None
+) -> HourBlock:
+    return HourBlock(subject, teacher, classroom, group, event, hour_name, hour_in_block, date, debug)
 
 
 def format_date(date: datetime.date) -> str:
@@ -134,7 +160,7 @@ def request_schedule(
         school_week=0,
         student_id=0,
         soup=False,
-):
+) -> requests.models.Response:
     """
     It requests schedule from easistent.com and returns it as a response
 
@@ -174,7 +200,7 @@ def get_schedule_data(
         interest_activity=0,
         school_week=0,
         student_id=0,
-):
+) -> Schedule:
     """
     Date format is: YYYY-MM-DD
     If school id is invalid ValueError is raised
@@ -222,124 +248,101 @@ def get_schedule_data(
             )
         )
     )
-    current_class = str(
+    class_name = str(
         [item.text.strip() for item in soup.select("body > div > strong")][0]
     )
-
+    finla_bundle_pre_turn = []
     for count, table_row in enumerate(table_rows):
+        bundle_hour: list[Hour] = []
         if count == 0:
             dates = get_dates(table_row)
+            continue
 
-        if count >= 1:
-            row = table_row.find_all("td",
-                                     class_="ednevnik-seznam_ur_teden-td")
-            hour_name, hour_time = get_hours_time_data(row)
-            hour_times.append(hour_time)
+        row = table_row.find_all("td",
+                                 class_="ednevnik-seznam_ur_teden-td")
+        hour_name, hour_time = get_hours_time_data(row)
+        hour_times.append(hour_time)
+        for count2, row_part in enumerate(row):
+            if count2 != 0:
+                bundle_hour_block = Hour(hour_name, [])
+                """Pass the first collum that contains hour times"""
+                date = dates[count2 - 1]
+                day_num = str(date.weekday())
+                if day_num not in scraped_data.keys():
+                    scraped_data.update({str(day_num): []})
+                scraped_data[day_num].append(Hour(hour_name, []))
 
-            for count2, row_part in enumerate(row):
-                if count2 != 0:
-                    """Pass the first collum that contains hour times"""
-                    date = dates[count2 - 1]
-                    day_num = str(date.weekday())
-                    if day_num not in scraped_data.keys():
-                        scraped_data.update({str(day_num): {}})
-                    scraped_data[day_num].update({str(hour_name): {}})
+                if "style" not in row_part.attrs:  # Detect empty hours
+                    data_out = make_data_out_v2(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
+                    # scraped_data[day_num][count - 1].blocks.append(data_out)
+                    bundle_hour_block.blocks.append(data_out)
+                else:
+                    classes_in_hour = 0
+                    for section in row_part:
+                        if type(section) != bs4.element.Tag:
+                            continue
+                        event = None
+                        group = []
+                        for img in section.select("img"):
+                            try:
+                                event = EVENT_MAP[img.attrs["title"]]
+                            except KeyError:
+                                event = "unknown_event"
+                        subject, group_raw, teacher_classroom = get_hour_data(section)
+                        teacher = teacher_classroom[0]
+                        hour_classroom = teacher_classroom[1]
+                        if group_raw:
+                            for gr in group_raw:
+                                group.append(gr.text)
+                        is_block_hour = ("id" in section.attrs) and bool(
+                            re.match(
+                                r"ednevnik-seznam_ur_teden-blok"
+                                r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
+                                section.attrs["id"],
+                            )
+                        )
 
-                    if "style" not in row_part.attrs:
-                        data_out = make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
-                        scraped_data[day_num][hour_name]["0"] = data_out
-                    else:
-                        classes_in_hour = 0
-                        for section in row_part:
-                            if type(section) == bs4.element.Tag:
-                                event = None
-                                subject = None
-                                group_raw = None
-                                group = []
-                                teacher = None
-                                hour_classroom = None
-                                for img in section.select("img"):
-                                    try:
-                                        event = EVENT_MAP[img.attrs["title"]]
-                                    except KeyError:
-                                        event = "unknown_event"
-
-                                try:
+                        if is_block_hour:
+                            # Check for blocks
+                            for block in section:
+                                if type(block) == bs4.element.Tag:
+                                    event = None
+                                    group = []
+                                    for img in block.select("img"):
+                                        try:
+                                            event = EVENT_MAP[
+                                                img.attrs["title"]
+                                            ]
+                                        except KeyError:
+                                            event = "unknown_event"
                                     subject, group_raw, teacher_classroom = get_hour_data(section)
                                     teacher = teacher_classroom[0]
                                     hour_classroom = teacher_classroom[1]
-                                except IndexError:
-                                    pass  # Makes it so empty strings don't
-                                    # crash the program
-                                except AttributeError:
-                                    pass  # Makes it so empty strings don't
-                                    # crash the program
-                                if group_raw:
-                                    for gr in group_raw:
-                                        group.append(gr.text)
-                                is_block_hour = ("id" in section.attrs) and bool(
-                                    re.match(
-                                        r"ednevnik-seznam_ur_teden-blok"
-                                        r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
-                                        section.attrs["id"],
-                                    )
-                                )
-
-                                if is_block_hour:
-                                    # Check for blocks
-                                    for block in section:
-                                        if type(block) == bs4.element.Tag:
-                                            event = None
-                                            subject = None
-                                            group_raw = None
-                                            group = []
-                                            teacher = None
-                                            hour_classroom = None
-                                            for img in block.select("img"):
-                                                try:
-                                                    event = EVENT_MAP[
-                                                        img.attrs["title"]
-                                                    ]
-                                                except KeyError:
-                                                    event = "unknown_event"
-                                            try:
-                                                subject, group_raw, teacher_classroom = get_hour_data(section)
-                                                teacher = teacher_classroom[0]
-                                                hour_classroom = teacher_classroom[
-                                                    1]
-                                            except IndexError:
-                                                pass
-                                            except AttributeError:
-                                                pass  # Makes it so empty
-                                                # strings don't crash the
-                                                # program
-                                            if group_raw:
-                                                for gr in group_raw:
-                                                    group.append(gr.text)
-                                            data_out = make_data_out(
-                                                date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
-                                            )
-                                            scraped_data[day_num][hour_name][
-                                                str(classes_in_hour)
-                                            ] = data_out
-                                            classes_in_hour += 1
-
-                                else:
-                                    data_out = make_data_out(
+                                    if group_raw:
+                                        for gr in group_raw:
+                                            group.append(gr.text)
+                                    data_out = make_data_out_v2(
                                         date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                                     )
-                                    scraped_data[day_num][hour_name][
-                                        str(classes_in_hour)
-                                    ] = data_out
+                                    bundle_hour_block.blocks.append(data_out)
+
+                                    # print(data_out)
+
+                                    # scraped_data[day_num][count - 1].blocks.append(data_out)
                                     classes_in_hour += 1
-    scraped_data["request_data"] = {}
-    scraped_data["request_data"]["hour_times"] = hour_times
-    scraped_data["request_data"]["dates"] = [format_date(x) for x in dates]
-    scraped_data["request_data"]["class"] = current_class
-    scraped_data["request_data"]["request_week"] = current_week
-    scraped_data["request_data"]["request_epoch"] = request_time
-    scraped_data["request_data"]["used_data"] = \
-        {
+                        else:
+                            data_out = make_data_out_v2(
+                                date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
+                            )
+                            # print(data_out)
+                            # scraped_data[day_num][count - 1].blocks.append(data_out)
+                            bundle_hour_block.blocks.append(data_out)
+
+                            classes_in_hour += 1
+                bundle_hour.append(bundle_hour_block)
+        finla_bundle_pre_turn.append(bundle_hour)
+    r = [SchoolDay(None, list(x)) for x in list(zip(*finla_bundle_pre_turn))]
+    used_data = {
             "school_id": school_id,
             "class_id": class_id,
             "professor": professor,
@@ -348,5 +351,4 @@ def get_schedule_data(
             "school_week": school_week,
             "student_id": student_id
         }
-
-    return scraped_data
+    return Schedule(r, hour_times, dates, class_name, current_week, request_time, used_data)
