@@ -7,18 +7,6 @@ from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
 
-EVENT_MAP = {
-    "Odpadla ura": "cancelled",
-    "Dogodek": "event",
-    "Nadomeščanje": "substitute",
-    "Polovična ura": "half_hour",
-    "Videokonferenca": "video_call",
-    "Interesna dejavnost": "activity",
-    "Zaposlitev": "occupation",
-    "Neopravljena ura": "unfinished_hour",
-    "Govorilne ure": "office hours",
-    "Izpiti": "exams",
-}
 
 
 @dataclass()
@@ -80,7 +68,9 @@ def get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
     except AttributeError:
         subject = section.find(class_=Formatting.EVENT_CLASS).text.replace("\n", "").replace("\t", "")
         teacher_classroom = [None, None]
-    return subject, group_raw, teacher_classroom
+    group = [x.text for x in group_raw]
+    group = None if group == [] else group
+    return subject, group, teacher_classroom
 
 
 def get_event(section: bs4.element.Tag) -> str:
@@ -253,14 +243,10 @@ def get_schedule_data(
                     for section in row_part:
                         if type(section) != bs4.element.Tag:
                             continue
-                        group = []
                         event = get_event(section)
-                        subject, group_raw, teacher_classroom = get_hour_data(section)
+                        subject, group, teacher_classroom = get_hour_data(section)
                         teacher = teacher_classroom[0]
                         hour_classroom = teacher_classroom[1]
-                        if group_raw:
-                            for gr in group_raw:
-                                group.append(gr.text)
 
                         is_block_hour = ("id" in section.attrs) and bool(
                             re.match(
@@ -273,20 +259,17 @@ def get_schedule_data(
                         if is_block_hour:
                             # Check for blocks
                             for block in section:
-                                if type(block) == bs4.element.Tag:
-                                    group = []
-                                    event = get_event(section)
-                                    subject, group_raw, teacher_classroom = get_hour_data(section)
-                                    teacher = teacher_classroom[0]
-                                    hour_classroom = teacher_classroom[1]
-                                    if group_raw:
-                                        for gr in group_raw:
-                                            group.append(gr.text)
-                                    data_out = make_data_out_v2(
-                                        date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
-                                    )
-                                    bundle_hour_block.blocks.append(data_out)
-                                    classes_in_hour += 1
+                                if type(block) != bs4.element.Tag:
+                                    continue
+                                event = get_event(section)
+                                subject, group, teacher_classroom = get_hour_data(section)
+                                teacher = teacher_classroom[0]
+                                hour_classroom = teacher_classroom[1]
+                                data_out = make_data_out_v2(
+                                    date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
+                                )
+                                bundle_hour_block.blocks.append(data_out)
+                                classes_in_hour += 1
                         else:
                             data_out = make_data_out_v2(
                                 date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
@@ -296,7 +279,7 @@ def get_schedule_data(
                             classes_in_hour += 1
                 bundle_hour.append(bundle_hour_block)
         finla_bundle_pre_turn.append(bundle_hour)
-    r = [SchoolDay(None, list(x)) for x in list(zip(*finla_bundle_pre_turn))]
+    school_days_list = [SchoolDay(None, list(x)) for x in list(zip(*finla_bundle_pre_turn))]
     used_data = {
         "school_id": school_id,
         "class_id": class_id,
@@ -306,4 +289,4 @@ def get_schedule_data(
         "school_week": school_week,
         "student_id": student_id
     }
-    return Schedule(r, hour_times, dates, class_name, current_week, request_time, used_data)
+    return Schedule(school_days_list, hour_times, dates, class_name, current_week, request_time, used_data)
