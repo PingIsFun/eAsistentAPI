@@ -138,8 +138,7 @@ def request_schedule(
         interest_activity=0,
         school_week=0,
         student_id=0,
-        soup=False,
-) -> BeautifulSoup | Response:
+) -> Response:
     """
     It requests schedule from easistent.com and returns it as a response
 
@@ -163,8 +162,6 @@ def request_schedule(
 
     if response.text == "Šola ni veljavna!" or response.text == "Šola ni izbrana!":
         raise ValueError("This school does not exist. school_id is invalid")
-    if soup:
-        return BeautifulSoup(response.text, "html5lib")
     return response
 
 
