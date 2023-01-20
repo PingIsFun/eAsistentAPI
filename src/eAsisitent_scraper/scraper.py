@@ -34,7 +34,7 @@ class HourBlock:
 @dataclass()
 class Hour:
     name: str
-    blocks: list[HourBlock]
+    hour_blocks: list[HourBlock]
 
 
 @dataclass()
@@ -213,7 +213,7 @@ def get_schedule_data(
                 day_num = str(date.weekday())
                 if "style" not in row_part.attrs:  # Detect empty hours
                     data_out = make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
-                    bundle_hour_block.blocks.append(data_out)
+                    bundle_hour_block.hour_blocks.append(data_out)
                 else:
                     classes_in_hour = 0
                     for section in row_part:
@@ -244,13 +244,13 @@ def get_schedule_data(
                                 data_out = make_data_out(
                                     date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                                 )
-                                bundle_hour_block.blocks.append(data_out)
+                                bundle_hour_block.hour_blocks.append(data_out)
                                 classes_in_hour += 1
                         else:
                             data_out = make_data_out(
                                 date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                             )
-                            bundle_hour_block.blocks.append(data_out)
+                            bundle_hour_block.hour_blocks.append(data_out)
 
                             classes_in_hour += 1
                 bundle_hour.append(bundle_hour_block)
