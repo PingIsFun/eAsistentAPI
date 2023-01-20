@@ -28,7 +28,6 @@ class HourBlock:
     hour: str
     hour_in_block: int
     date: datetime.date
-    debug: str = None
 
 
 @dataclass()
@@ -99,9 +98,8 @@ def make_data_out(
         hour_name: str = None,
         week_day: str = None,
         hour_in_block: int = None,
-        debug=None
 ) -> HourBlock:
-    return HourBlock(subject, teacher, classroom, group, event, hour_name, hour_in_block, date, debug)
+    return HourBlock(subject, teacher, classroom, group, event, hour_name, hour_in_block, date)
 
 
 def format_date(date: datetime.date) -> str:
