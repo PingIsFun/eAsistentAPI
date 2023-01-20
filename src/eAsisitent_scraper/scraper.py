@@ -139,22 +139,6 @@ def request_schedule(
         school_week=0,
         student_id=0,
 ) -> Response:
-    """
-    It requests schedule from easistent.com and returns it as a response
-
-    :param school_id: The ID of the school you want to get data for
-    :type school_id: str
-    :param class_id: The ID of the class you want to get data for, 0 is all classes, defaults to 0 (optional)
-    :param professor: The ID of the professor you want to get data for,  0 is all professors, defaults to 0 (optional)
-    :param classroom: The classroom you want to get data for,  0 is all classrooms, defaults to 0 (optional)
-    :param interest_activity: The activity you want to get data for, 0 is all interest activities, defaults to 0 (optional)
-    :param school_week: school week that you want to get the data for, 0 is the current week, defaults to 0 (optional)
-    :param student_id: The ID of the student you want to get the schedule for,0 is all students, defaults to 0 (optional)
-    :param soup: Return a BeautifulSoup object (optional)
-    :return: A response object is a requests.models.Response object.
-
-
-    """
 
     url = f"https://www.easistent.com/urniki/izpis/{school_id}/{class_id}/{professor}/{classroom}/{interest_activity}/{school_week}/{student_id}"
 
@@ -177,23 +161,7 @@ def get_schedule_data(
         school_week=0,
         student_id=0,
 ) -> Schedule:
-    """
-    Date format is: YYYY-MM-DD
-    If school id is invalid ValueError is raised
 
-    :param school_id: The ID of the school you want to get data for
-    :type school_id: str
-    :param class_id: The ID of the class you want to get data for, 0 is all classes, defaults to 0 (optional)
-    :param professor: The ID of the professor you want to get data for,  0 is all professors, defaults to 0 (optional)
-    :param classroom: The classroom you want to get data for,  0 is all classrooms, defaults to 0 (optional)
-    :param interest_activity: The activity you want to get data for, 0 is all interest activities, defaults to 0 (optional)
-    :param school_week: school week that you want to get the data for, 0 is the current week, defaults to 0 (optional)
-    :param student_id: The ID of the student you want to get the schedule for,0 is all students, defaults to 0 (optional)
-    :return: A dictionary with the data.
-    """
-
-    # TODO: reduce complexity of the function,
-    #  better naming of variables,
     response = request_schedule(
         school_id=school_id,
         class_id=class_id,
