@@ -44,6 +44,17 @@ class SchoolDay:
 
 
 @dataclass()
+class UsedData:
+    school_id: str
+    class_id: int
+    professor: int
+    classroom: int
+    interest_activity: int
+    school_week: int
+    student_id: int
+
+
+@dataclass()
 class Schedule:
     days: list[SchoolDay]
     hour_times: list[str]
@@ -51,7 +62,7 @@ class Schedule:
     class_name: str
     request_week: int
     request_epoch: int
-    used_data: dict
+    used_data: UsedData
 
 
 def get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
@@ -280,13 +291,5 @@ def get_schedule_data(
                 bundle_hour.append(bundle_hour_block)
         final_bundle_pre_turn.append(bundle_hour)
     school_days_list = [SchoolDay(None, list(x)) for x in list(zip(*final_bundle_pre_turn))]
-    used_data = {
-        "school_id": school_id,
-        "class_id": class_id,
-        "professor": professor,
-        "classroom": classroom,
-        "interest_activity": interest_activity,
-        "school_week": school_week,
-        "student_id": student_id
-    }
+    used_data = UsedData(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
     return Schedule(school_days_list, hour_times, dates, class_name, current_week, request_time, used_data)
