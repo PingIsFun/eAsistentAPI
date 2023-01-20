@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
-
+from requests import Response
 
 
 @dataclass()
@@ -78,7 +78,7 @@ def get_event(section: bs4.element.Tag) -> str:
         return img.attrs["title"]
 
 
-def make_data_out_v2(
+def make_data_out(
         date: datetime.date,
         subject: str = None,
         teacher: str = None,
@@ -128,7 +128,7 @@ def request_schedule(
         school_week=0,
         student_id=0,
         soup=False,
-) -> requests.models.Response:
+) -> BeautifulSoup | Response:
     """
     It requests schedule from easistent.com and returns it as a response
 
@@ -218,7 +218,7 @@ def get_schedule_data(
     class_name = str(
         [item.text.strip() for item in soup.select("body > div > strong")][0]
     )
-    finla_bundle_pre_turn = []
+    final_bundle_pre_turn = []
     for count, table_row in enumerate(table_rows):
         bundle_hour: list[Hour] = []
         if count == 0:
@@ -232,11 +232,11 @@ def get_schedule_data(
         for count2, row_part in enumerate(row):
             if count2 != 0:
                 bundle_hour_block = Hour(hour_name, [])
-                """Pass the first collum that contains hour times"""
+                """Pass the first column that contains hour times"""
                 date = dates[count2 - 1]
                 day_num = str(date.weekday())
                 if "style" not in row_part.attrs:  # Detect empty hours
-                    data_out = make_data_out_v2(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
+                    data_out = make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
                     bundle_hour_block.blocks.append(data_out)
                 else:
                     classes_in_hour = 0
@@ -265,21 +265,21 @@ def get_schedule_data(
                                 subject, group, teacher_classroom = get_hour_data(section)
                                 teacher = teacher_classroom[0]
                                 hour_classroom = teacher_classroom[1]
-                                data_out = make_data_out_v2(
+                                data_out = make_data_out(
                                     date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                                 )
                                 bundle_hour_block.blocks.append(data_out)
                                 classes_in_hour += 1
                         else:
-                            data_out = make_data_out_v2(
+                            data_out = make_data_out(
                                 date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                             )
                             bundle_hour_block.blocks.append(data_out)
 
                             classes_in_hour += 1
                 bundle_hour.append(bundle_hour_block)
-        finla_bundle_pre_turn.append(bundle_hour)
-    school_days_list = [SchoolDay(None, list(x)) for x in list(zip(*finla_bundle_pre_turn))]
+        final_bundle_pre_turn.append(bundle_hour)
+    school_days_list = [SchoolDay(None, list(x)) for x in list(zip(*final_bundle_pre_turn))]
     used_data = {
         "school_id": school_id,
         "class_id": class_id,
