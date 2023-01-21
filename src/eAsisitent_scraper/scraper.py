@@ -64,7 +64,7 @@ class Schedule:
     used_data: UsedData
 
 
-def get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
+def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
     group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
     try:
@@ -83,12 +83,12 @@ def get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
     return subject, group, teacher_classroom
 
 
-def get_event(section: bs4.element.Tag) -> str:
+def __get_event(section: bs4.element.Tag) -> str:
     for img in section.select("img"):
         return img.attrs["title"]
 
 
-def make_data_out(
+def __make_data_out(
         date: datetime.date,
         subject: str = None,
         teacher: str = None,
@@ -102,11 +102,11 @@ def make_data_out(
     return HourBlock(subject, teacher, classroom, group, event, hour_name, hour_in_block, date)
 
 
-def format_date(date: datetime.date) -> str:
+def __format_date(date: datetime.date) -> str:
     return str(date.strftime("%Y-%m-%d"))
 
 
-def get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
+def __get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
     dates: list = []
     for days in table_row:
         if type(days) == bs4.element.Tag:
@@ -122,13 +122,13 @@ def get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
     return dates
 
 
-def get_hours_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
+def __get_hours_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
     hour_name = str(row[0].find(class_="text14").text)
     hour_time = str(row[0].find(class_="text10").text.replace(" ", ""))
     return hour_name, hour_time
 
 
-def request_schedule(
+def __request_schedule(
         school_id: str,
         class_id=0,
         professor=0,
@@ -160,7 +160,7 @@ def get_schedule_data(
         student_id=0,
 ) -> Schedule:
 
-    response = request_schedule(
+    response = __request_schedule(
         school_id=school_id,
         class_id=class_id,
         professor=professor,
@@ -196,12 +196,12 @@ def get_schedule_data(
     for count, table_row in enumerate(table_rows):
         bundle_hour: list[Hour] = []
         if count == 0:
-            dates = get_dates(table_row)
+            dates = __get_dates(table_row)
             continue
 
         row = table_row.find_all("td",
                                  class_="ednevnik-seznam_ur_teden-td")
-        hour_name, hour_time = get_hours_time_data(row)
+        hour_name, hour_time = __get_hours_time_data(row)
         hour_times.append(hour_time)
         for count2, row_part in enumerate(row):
             if count2 != 0:
@@ -210,15 +210,15 @@ def get_schedule_data(
                 date = dates[count2 - 1]
                 day_num = str(date.weekday())
                 if "style" not in row_part.attrs:  # Detect empty hours
-                    data_out = make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
+                    data_out = __make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
                     bundle_hour_block.hour_blocks.append(data_out)
                 else:
                     classes_in_hour = 0
                     for section in row_part:
                         if type(section) != bs4.element.Tag:
                             continue
-                        event = get_event(section)
-                        subject, group, teacher_classroom = get_hour_data(section)
+                        event = __get_event(section)
+                        subject, group, teacher_classroom = __get_hour_data(section)
                         teacher = teacher_classroom[0]
                         hour_classroom = teacher_classroom[1]
 
@@ -235,17 +235,17 @@ def get_schedule_data(
                             for block in section:
                                 if type(block) != bs4.element.Tag:
                                     continue
-                                event = get_event(section)
-                                subject, group, teacher_classroom = get_hour_data(section)
+                                event = __get_event(section)
+                                subject, group, teacher_classroom = __get_hour_data(section)
                                 teacher = teacher_classroom[0]
                                 hour_classroom = teacher_classroom[1]
-                                data_out = make_data_out(
+                                data_out = __make_data_out(
                                     date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                                 )
                                 bundle_hour_block.hour_blocks.append(data_out)
                                 classes_in_hour += 1
                         else:
-                            data_out = make_data_out(
+                            data_out = __make_data_out(
                                 date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                             )
                             bundle_hour_block.hour_blocks.append(data_out)
