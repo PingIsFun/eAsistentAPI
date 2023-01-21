@@ -146,7 +146,7 @@ def __request_schedule(
     return response
 
 
-def get_schedule_data(
+def get_schedule(
         school_id: str,
         class_id=0,
         professor=0,

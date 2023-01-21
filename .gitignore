@@ -13,9 +13,9 @@ Pipfile.lock
 # Other
 random_code/
 dist/
-src/eAsistent_scraper.egg-info/
+*.egg-info
 git_hidden/
 
 # Not done yet
 tests/
-src/eAsisitent_scraper/pharser.py
+src/eAsisitentAPI/pharser.py
