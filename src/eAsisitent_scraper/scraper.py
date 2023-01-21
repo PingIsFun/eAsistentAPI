@@ -202,50 +202,51 @@ def get_schedule_data(
         hour_name, hour_time = __get_hours_time_data(row)
         hour_times.append(hour_time)
         for count2, row_part in enumerate(row):
-            if count2 != 0:
-                bundle_hour_block = Hour(hour_name, [])
-                """Pass the first column that contains hour times"""
-                date = dates[count2 - 1]
-                day_num = str(date.weekday())
-                if "style" not in row_part.attrs:  # Detect empty hours
-                    data_out = __make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
-                    bundle_hour_block.hour_blocks.append(data_out)
-                else:
-                    classes_in_hour = 0
-                    for section in row_part:
-                        if type(section) != bs4.element.Tag:
-                            continue
-                        event = __get_event(section)
-                        subject, group, teacher, hour_classroom = __get_hour_data(section)
+            if count2 == 0:
+                continue
+            bundle_hour_block = Hour(hour_name, [])
+            """Pass the first column that contains hour times"""
+            date = dates[count2 - 1]
+            day_num = str(date.weekday())
+            if "style" not in row_part.attrs:  # Detect empty hours
+                data_out = __make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
+                bundle_hour_block.hour_blocks.append(data_out)
+            else:
+                classes_in_hour = 0
+                for section in row_part:
+                    if type(section) != bs4.element.Tag:
+                        continue
+                    event = __get_event(section)
+                    subject, group, teacher, hour_classroom = __get_hour_data(section)
 
-                        is_block_hour = ("id" in section.attrs) and bool(
-                            re.match(
-                                r"ednevnik-seznam_ur_teden-blok"
-                                r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
-                                section.attrs["id"],
-                            )
+                    is_block_hour = ("id" in section.attrs) and bool(
+                        re.match(
+                            r"ednevnik-seznam_ur_teden-blok"
+                            r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
+                            section.attrs["id"],
                         )
+                    )
 
-                        if is_block_hour:
-                            # Check for blocks
-                            for block in section:
-                                if type(block) != bs4.element.Tag:
-                                    continue
-                                event = __get_event(section)
-                                subject, group, teacher, hour_classroom = __get_hour_data(section)
-                                data_out = __make_data_out(
-                                    date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
-                                )
-                                bundle_hour_block.hour_blocks.append(data_out)
-                                classes_in_hour += 1
-                        else:
+                    if is_block_hour:
+                        # Check for blocks
+                        for block in section:
+                            if type(block) != bs4.element.Tag:
+                                continue
+                            event = __get_event(section)
+                            subject, group, teacher, hour_classroom = __get_hour_data(section)
                             data_out = __make_data_out(
                                 date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                             )
                             bundle_hour_block.hour_blocks.append(data_out)
-
                             classes_in_hour += 1
-                bundle_hour.append(bundle_hour_block)
+                    else:
+                        data_out = __make_data_out(
+                            date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
+                        )
+                        bundle_hour_block.hour_blocks.append(data_out)
+
+                        classes_in_hour += 1
+            bundle_hour.append(bundle_hour_block)
         final_bundle_pre_turn.append(bundle_hour)
     school_days_list = [SchoolDay(dates[index], list(x)) for index, x in enumerate(list(zip(*final_bundle_pre_turn)))]
     used_data = UsedData(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
