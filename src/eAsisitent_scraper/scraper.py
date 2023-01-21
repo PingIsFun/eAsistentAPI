@@ -64,7 +64,7 @@ class Schedule:
     used_data: UsedData
 
 
-def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
+def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, str, str]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
     group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
     try:
@@ -80,7 +80,7 @@ def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, list]:
         teacher_classroom = [None, None]
     group = [x.text for x in group_raw]
     group = None if group == [] else group
-    return subject, group, teacher_classroom
+    return subject, group, teacher_classroom[0], teacher_classroom[1]
 
 
 def __get_event(section: bs4.element.Tag) -> str:
@@ -137,7 +137,6 @@ def __request_schedule(
         school_week=0,
         student_id=0,
 ) -> Response:
-
     url = f"https://www.easistent.com/urniki/izpis/{school_id}/{class_id}/{professor}/{classroom}/{interest_activity}/{school_week}/{student_id}"
 
     response = requests.get(url)
@@ -159,7 +158,6 @@ def get_schedule_data(
         school_week=0,
         student_id=0,
 ) -> Schedule:
-
     response = __request_schedule(
         school_id=school_id,
         class_id=class_id,
@@ -218,9 +216,7 @@ def get_schedule_data(
                         if type(section) != bs4.element.Tag:
                             continue
                         event = __get_event(section)
-                        subject, group, teacher_classroom = __get_hour_data(section)
-                        teacher = teacher_classroom[0]
-                        hour_classroom = teacher_classroom[1]
+                        subject, group, teacher, hour_classroom = __get_hour_data(section)
 
                         is_block_hour = ("id" in section.attrs) and bool(
                             re.match(
@@ -236,9 +232,7 @@ def get_schedule_data(
                                 if type(block) != bs4.element.Tag:
                                     continue
                                 event = __get_event(section)
-                                subject, group, teacher_classroom = __get_hour_data(section)
-                                teacher = teacher_classroom[0]
-                                hour_classroom = teacher_classroom[1]
+                                subject, group, teacher, hour_classroom = __get_hour_data(section)
                                 data_out = __make_data_out(
                                     date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
                                 )
