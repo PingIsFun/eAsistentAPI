@@ -116,7 +116,7 @@ def __get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
                 temp_datetime = datetime.date(
                     day=int(temp_date[0]),
                     month=int(temp_date[1]),
-                    year=today.year,
+                    year=datetime.date.today().year,
                 )
                 dates.append(temp_datetime)
     return dates
@@ -144,9 +144,6 @@ def __request_schedule(
     if response.text == "Šola ni veljavna!" or response.text == "Šola ni izbrana!":
         raise ValueError("This school does not exist. school_id is invalid")
     return response
-
-
-today = datetime.date.today()
 
 
 def get_schedule_data(
