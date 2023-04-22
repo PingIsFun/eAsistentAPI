@@ -63,6 +63,30 @@ class Schedule:
     request_epoch: int
     used_data: UsedData
 
+    def diff(self, schedule: 'Schedule'):
+        res = []
+        for days, days_old in zip(self.days, schedule.days):
+            days: SchoolDay
+            days_old: SchoolDay
+            if days == days_old:
+                continue
+            for hour, hour_old in zip(days.hours, days_old.hours):
+                hour: Hour
+                hour_old: Hour
+                if hour == hour_old:
+                    continue
+                for hour_block, hour_block_old in zip(hour.hour_blocks, hour_old.hour_blocks):
+                    hour_block: HourBlock
+                    hour_block_old: HourBlock
+                    if _hour_block_partial_equality(hour_block, hour_block_old):
+                        continue
+                    res.append((hour_block, hour_block_old))
+        return res
+
+def _hour_block_partial_equality(hour_block_new1: HourBlock, hour_block2: HourBlock) -> bool:
+    return hour_block_new1.subject == hour_block2.subject and hour_block_new1.teacher == hour_block2.teacher \
+        and hour_block_new1.classroom == hour_block2.classroom and hour_block_new1.group == hour_block2.group \
+        and hour_block_new1.event == hour_block2.event and hour_block_new1.hour == hour_block2.hour
 
 def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, str, str]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
