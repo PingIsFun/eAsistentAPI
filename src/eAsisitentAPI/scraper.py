@@ -51,6 +51,7 @@ class UsedData:
     interest_activity: int
     school_week: int
     student_id: int
+    url: str = ""
 
 
 @dataclass()
@@ -83,10 +84,12 @@ class Schedule:
                     res.append((hour_block, hour_block_old))
         return res
 
+
 def _hour_block_partial_equality(hour_block_new1: HourBlock, hour_block2: HourBlock) -> bool:
     return hour_block_new1.subject == hour_block2.subject and hour_block_new1.teacher == hour_block2.teacher \
         and hour_block_new1.classroom == hour_block2.classroom and hour_block_new1.group == hour_block2.group \
         and hour_block_new1.event == hour_block2.event and hour_block_new1.hour == hour_block2.hour
+
 
 def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, str, str]:
     subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
@@ -152,6 +155,17 @@ def __get_hours_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
     return hour_name, hour_time
 
 
+def __get_url(
+        school_id: str,
+        class_id=0,
+        professor=0,
+        classroom=0,
+        interest_activity=0,
+        school_week=0,
+        student_id=0) -> str:
+    return f"https://www.easistent.com/urniki/izpis/{school_id}/{class_id}/{professor}/{classroom}/{interest_activity}/{school_week}/{student_id}"
+
+
 def __request_schedule(
         school_id: str,
         class_id=0,
@@ -161,7 +175,7 @@ def __request_schedule(
         school_week=0,
         student_id=0,
 ) -> Response:
-    url = f"https://www.easistent.com/urniki/izpis/{school_id}/{class_id}/{professor}/{classroom}/{interest_activity}/{school_week}/{student_id}"
+    url = __get_url(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
 
     response = requests.get(url)
 
@@ -188,6 +202,8 @@ def get_schedule(
         school_week=school_week,
         student_id=student_id,
     )
+
+    url = __get_url(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
 
     request_time = int(time.time())
 
@@ -270,5 +286,5 @@ def get_schedule(
             bundle_hour.append(bundle_hour_block)
         final_bundle_pre_turn.append(bundle_hour)
     school_days_list = [SchoolDay(dates[index], list(x)) for index, x in enumerate(list(zip(*final_bundle_pre_turn)))]
-    used_data = UsedData(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
+    used_data = UsedData(school_id, class_id, professor, classroom, interest_activity, school_week, student_id, url)
     return Schedule(school_days_list, hour_times, dates, class_name, current_week, request_time, used_data)
