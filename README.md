@@ -3,7 +3,7 @@
 ## EN
 To install it run:
 
-    pip install eAsistent-scraper
+    pip install eAsistentPY
 
 ***
 Example usage:
