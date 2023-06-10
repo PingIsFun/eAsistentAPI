@@ -18,4 +18,4 @@ git_hidden/
 
 # Not done yet
 tests/
-src/eAsisitentAPI/pharser.py
+git_hidden/pharser.py
