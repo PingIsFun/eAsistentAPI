@@ -92,7 +92,10 @@ def _hour_block_partial_equality(hour_block_new1: HourBlock, hour_block2: HourBl
 
 
 def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, str, str]:
-    subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
+    try:
+        subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
+    except AttributeError:
+        subject = None
     group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
     try:
         teacher_classroom = list(
@@ -103,7 +106,6 @@ def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, str, str]:
             .split(", ")
         )
     except AttributeError:
-        subject = section.find(class_=Formatting.EVENT_CLASS).text.replace("\n", "").replace("\t", "")
         teacher_classroom = [None, None]
     group = [x.text for x in group_raw]
     group = None if group == [] else group
