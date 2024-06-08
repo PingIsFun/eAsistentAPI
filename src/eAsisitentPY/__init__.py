@@ -1,2 +1,2 @@
-from .scraper import get_schedule
+from .api import API
 

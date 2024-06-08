@@ -1,292 +1,290 @@
-import bs4.element
+import logging
+from dataclasses import dataclass
 import datetime
 import re
+from typing import Callable, TypeVar
+
+import bs4.element
 import requests
-import time
-from dataclasses import dataclass
-
 from bs4 import BeautifulSoup
-from requests import Response
+
+from structure import EventType, HourTime, Teacher, ClassHour, LimitedClassHour, LimitedHour, \
+    LimitedEventHour, WeekData, RequestData, ClassSchedule, LimitedSchedule
+
+PARSED_HOUR_RETURN = tuple[tuple[str, str | None], tuple[str, str], list[str], EventType | None]
+LOGGER = logging.getLogger("eAsistentPY-scraper")
 
 
-@dataclass()
-class Formatting:
-    SUBJECT_CLASS = "text14"
-    RAW_GROUP_CLASS = "text11 gray bold"
-    TEACHER_CLASSROOM_CLASS = "text11"
-    EVENT_CLASS = "text14"
-    CLASS_NAME_CLASS = "text20"
+def request_ajax(request_data: RequestData) -> requests.Response:
+    url = "https://www.easistent.com/urniki/ajax_urnik"
 
+    payload = (f"id_sola={request_data.school_id}"
+               f"&id_razred={request_data.class_id}"
+               f"&id_profesor={request_data.professor_id}"
+               f"&id_dijak={request_data.student_id}"
+               f"&id_ucilnica={request_data.classroom_id}"
+               f"&teden={request_data.school_week}"
+               f"&id_interesna_dejavnost={request_data.interest_activity}")
 
-@dataclass()
-class HourBlock:
-    subject: str
-    teacher: str
-    classroom: str
-    group: list[str]
-    event: str
-    hour: str
-    hour_in_block: int
-    date: datetime.date
+    headers = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}
 
+    response = requests.request("POST", url, data=payload, headers=headers)
 
-@dataclass()
-class Hour:
-    name: str
-    hour_blocks: list[HourBlock]
-
-
-@dataclass()
-class SchoolDay:
-    date: datetime
-    hours: list[Hour]
-
-
-@dataclass()
-class UsedData:
-    school_id: str
-    class_id: int
-    professor: int
-    classroom: int
-    interest_activity: int
-    school_week: int
-    student_id: int
-    url: str = ""
-
-
-@dataclass()
-class Schedule:
-    days: list[SchoolDay]
-    hour_times: list[str]
-    dates: list[datetime.date]
-    class_name: str
-    request_week: int
-    request_epoch: int
-    used_data: UsedData
-
-    def diff(self, schedule: 'Schedule'):
-        res = []
-        for days, days_old in zip(self.days, schedule.days):
-            days: SchoolDay
-            days_old: SchoolDay
-            if days == days_old:
-                continue
-            for hour, hour_old in zip(days.hours, days_old.hours):
-                hour: Hour
-                hour_old: Hour
-                if hour == hour_old:
-                    continue
-                for hour_block, hour_block_old in zip(hour.hour_blocks, hour_old.hour_blocks):
-                    hour_block: HourBlock
-                    hour_block_old: HourBlock
-                    if _hour_block_partial_equality(hour_block, hour_block_old):
-                        continue
-                    res.append((hour_block, hour_block_old))
-        return res
-
-
-def _hour_block_partial_equality(hour_block_new1: HourBlock, hour_block2: HourBlock) -> bool:
-    return hour_block_new1.subject == hour_block2.subject and hour_block_new1.teacher == hour_block2.teacher \
-        and hour_block_new1.classroom == hour_block2.classroom and hour_block_new1.group == hour_block2.group \
-        and hour_block_new1.event == hour_block2.event and hour_block_new1.hour == hour_block2.hour
-
-
-def __get_hour_data(section: bs4.element.Tag) -> tuple[str, list, str, str]:
-    try:
-        subject = section.find(class_=Formatting.SUBJECT_CLASS).text.replace("\n", "").replace("\t", "")
-    except AttributeError:
-        subject = None
-    group_raw = section.find_all(class_=Formatting.RAW_GROUP_CLASS)
-    try:
-        teacher_classroom = list(
-            section.find(class_=Formatting.TEACHER_CLASSROOM_CLASS)
-            .text.replace("\n", "")
-            .replace("\t", "")
-            .replace("\r", "")
-            .split(", ")
-        )
-    except AttributeError:
-        teacher_classroom = [None, None]
-    group = [x.text for x in group_raw]
-    group = None if group == [] else group
-    return subject, group, teacher_classroom[0], teacher_classroom[1]
-
-
-def __get_event(section: bs4.element.Tag) -> str:
-    for img in section.select("img"):
-        return img.attrs["title"]
-
-
-def __make_data_out(
-        date: datetime.date,
-        subject: str = None,
-        teacher: str = None,
-        classroom: str = None,
-        group: list = None,
-        event: str = None,
-        hour_name: str = None,
-        week_day: str = None,
-        hour_in_block: int = None,
-) -> HourBlock:
-    return HourBlock(subject, teacher, classroom, group, event, hour_name, hour_in_block, date)
-
-
-def __format_date(date: datetime.date) -> str:
-    return str(date.strftime("%Y-%m-%d"))
-
-
-def __get_dates(table_row: bs4.element.Tag) -> list[datetime.date]:
-    dates: list = []
-    for days in table_row:
-        if type(days) == bs4.element.Tag:
-            day = days.select("div")
-            if day[0].text != "Ura":
-                temp_date = re.findall(r"[^A-z,. ]+", day[1].text)
-                temp_datetime = datetime.date(
-                    day=int(temp_date[0]),
-                    month=int(temp_date[1]),
-                    year=datetime.date.today().year,
-                )
-                dates.append(temp_datetime)
-    return dates
-
-
-def __get_hours_time_data(row: bs4.element.ResultSet) -> tuple[str, str]:
-    hour_name = str(row[0].find(class_="text14").text)
-    hour_time = str(row[0].find(class_="text10").text.replace(" ", ""))
-    return hour_name, hour_time
-
-
-def __get_url(
-        school_id: str,
-        class_id=0,
-        professor=0,
-        classroom=0,
-        interest_activity=0,
-        school_week=0,
-        student_id=0) -> str:
-    return f"https://www.easistent.com/urniki/izpis/{school_id}/{class_id}/{professor}/{classroom}/{interest_activity}/{school_week}/{student_id}"
-
-
-def __request_schedule(
-        school_id: str,
-        class_id=0,
-        professor=0,
-        classroom=0,
-        interest_activity=0,
-        school_week=0,
-        student_id=0,
-) -> Response:
-    url = __get_url(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
-
-    response = requests.get(url)
-
-    if response.text == "Šola ni veljavna!" or response.text == "Šola ni izbrana!":
-        raise ValueError("This school does not exist. school_id is invalid")
+    if response.status_code != 200:
+        raise ValueError("An error occurred.")
     return response
 
 
-def get_schedule(
-        school_id: str,
-        class_id=0,
-        professor=0,
-        classroom=0,
-        interest_activity=0,
-        school_week=0,
-        student_id=0,
-) -> Schedule:
-    response = __request_schedule(
-        school_id=school_id,
-        class_id=class_id,
-        professor=professor,
-        classroom=classroom,
-        interest_activity=interest_activity,
-        school_week=school_week,
-        student_id=student_id,
-    )
+def get_html(request_data: RequestData) -> str:
+    response = request_ajax(request_data)
+    return response.text
 
-    url = __get_url(school_id, class_id, professor, classroom, interest_activity, school_week, student_id)
 
-    request_time = int(time.time())
+def get_week_data(s: str) -> WeekData:
+    s = s.strip().split("")
+    week = int(s[0])
+    date_format = "%d. %m. %Y"
+    start_date = datetime.datetime.strptime(s[1], date_format).date()
+    end_date = datetime.datetime.strptime(s[2], date_format).date()
+    return WeekData(week, start_date, end_date)
 
-    soup = BeautifulSoup(response.text, "html5lib")
-    table_rows = soup.select("body > table > tbody > tr")
 
-    hour_times: list = []
-    dates: list[datetime.date] = []
+def school_start_year() -> int:
+    now = datetime.datetime.now().date()
+    year = now.year
+    if now.month < 7:
+        year -= 1
+    return year
 
-    current_week = int(
-        "".join(
-            re.findall(
-                "[0-9]",
-                [item.text.split(",")[0] for item in
-                 soup.select("body > div > span")][
-                    0
-                ],
-            )
-        )
-    )
-    class_name = str(
-        [item.text.strip() for item in soup.select("body > div > strong")][0]
-    )
-    final_bundle_pre_turn = []
-    for count, table_row in enumerate(table_rows):
-        bundle_hour: list[Hour] = []
-        if count == 0:
-            dates = __get_dates(table_row)
-            continue
 
-        row = table_row.find_all("td",
-                                 class_="ednevnik-seznam_ur_teden-td")
-        hour_name, hour_time = __get_hours_time_data(row)
-        hour_times.append(hour_time)
-        for count2, row_part in enumerate(row):
-            if count2 == 0:
-                continue
-            bundle_hour_block = Hour(hour_name, [])
-            """Pass the first column that contains hour times"""
-            date = dates[count2 - 1]
-            day_num = str(date.weekday())
-            if "style" not in row_part.attrs:  # Detect empty hours
-                data_out = __make_data_out(date, hour_name=hour_name, week_day=day_num, hour_in_block=0)
-                bundle_hour_block.hour_blocks.append(data_out)
-            else:
-                classes_in_hour = 0
-                for section in row_part:
-                    if type(section) != bs4.element.Tag:
-                        continue
-                    event = __get_event(section)
-                    subject, group, teacher, hour_classroom = __get_hour_data(section)
+def set_year(date: datetime.date) -> datetime.date:
+    year = school_start_year()
+    if date.month < 7:
+        year += 1
+    return datetime.date(year, date.month, date.day)
 
-                    is_block_hour = ("id" in section.attrs) and bool(
-                        re.match(
-                            r"ednevnik-seznam_ur_teden-blok"
-                            r"-\d\d\d\d\d\d-\d\d\d\d-\d\d-\d\d",
-                            section.attrs["id"],
-                        )
-                    )
 
-                    if not is_block_hour:
-                        data_out = __make_data_out(
-                            date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
-                        )
-                        bundle_hour_block.hour_blocks.append(data_out)
-                        classes_in_hour += 1
-                        continue
+def get_day_dates(days: list[bs4.Tag]) -> list[datetime.date]:
+    days.pop(0)
+    res = []
+    date_format = "%d. %m."
+    for i in days:
+        date = i.select("th > div")[1].text
+        date = set_year(datetime.datetime.strptime(date, date_format).date())
+        res.append(date)
+    return res
 
-                    for block in section:
-                        if type(block) != bs4.element.Tag:
-                            continue
-                        event = __get_event(section)
-                        subject, group, teacher, hour_classroom = __get_hour_data(section)
-                        data_out = __make_data_out(
-                            date, subject, teacher, hour_classroom, group, event, hour_name, day_num, classes_in_hour
-                        )
-                        bundle_hour_block.hour_blocks.append(data_out)
-                        classes_in_hour += 1
 
-            bundle_hour.append(bundle_hour_block)
-        final_bundle_pre_turn.append(bundle_hour)
-    school_days_list = [SchoolDay(dates[index], list(x)) for index, x in enumerate(list(zip(*final_bundle_pre_turn)))]
-    used_data = UsedData(school_id, class_id, professor, classroom, interest_activity, school_week, student_id, url)
-    return Schedule(school_days_list, hour_times, dates, class_name, current_week, request_time, used_data)
+def get_hours(hours: list[bs4.Tag]) -> list[HourTime]:
+    time_format = "%H:%M"
+    res = []
+    for i in hours:
+        name, time = [x.text.strip() for x in i.select("td > div")]
+        start, end = [datetime.datetime.strptime(x, time_format).time() for x in time.split(" - ")]
+        res.append(HourTime(name, start, end))
+    return res
+
+
+def parse_hour(data: bs4.Tag) -> PARSED_HOUR_RETURN:
+    event = None
+    try:
+        event = EventType(data.find("img").attrs["title"])
+    except AttributeError:
+        pass
+
+    if event == EventType.DOGODEK:
+        # TODO
+        text1 = data.select("table > tbody > tr > td")[0].text.strip()
+        data = list(data)
+        for x in data:
+            if isinstance(x, bs4.Tag):
+                data.remove(x)
+                break
+        description = "".join([x.text for x in data]).strip()
+        return (text1, description), None, None, event
+
+    if event == EventType.GOVORILNE_URE:
+        data = data.select("table > tbody > tr > td")[0]
+        title = data.find(string=True).strip()  # Individualne govorilne ure
+
+        try:
+            description = data.select("em")[0].text.strip()
+        except IndexError:
+            description = None
+
+        data = data.select("span")
+        teacher, classroom = [x.strip() for x in data[0].text.split("(")]
+        classroom = classroom.removesuffix(")").strip()
+        time_format = "%H:%M"
+        # start, end = [datetime.datetime.strptime(x, time_format).time() for x in
+        #               data[1].text.split(",")[0].strip().split(" - ")]
+
+        return (description, None), (teacher, classroom), None, event
+
+    res = []
+    # Row 1 (subject/class name)
+    row1_raw = data.select("table > tbody > tr > td")[0]
+    span1_raw = row1_raw.find("span")
+    span1 = None
+    if span1_raw:
+        span1 = span1_raw.attrs.get("title")
+        span1 = span1.strip() if span1 is not None else None
+    res.append((row1_raw.text.strip(), span1))
+
+    divs = data.find_all("div")
+
+    # Row 2 (teacher/(teacher, classroom))
+    row2_raw = divs.pop(0)
+    title2 = row2_raw.attrs.get("title")
+    text2 = row2_raw.text.strip()
+    res.append((title2, text2))
+
+    # Row 3 (None/None|Group)
+    res.append([])
+    if len(divs) > 1:
+        groups = [x.text.strip() for x in divs]
+        res[2] = groups
+    # Event
+    res.append(event)
+    return tuple(res)
+
+
+def extract_tag_elements(data: list[bs4.PageElement]) -> list[bs4.Tag]:
+    return [x for x in data if isinstance(x, bs4.element.Tag)]
+
+
+def parse_hour_block(data: bs4.Tag) -> list[PARSED_HOUR_RETURN]:
+    data = data.select("td > div")
+    res = []
+    if len(data) == 0:
+        return []
+    if len(data) == 1:
+        try:
+            res.append(parse_hour(data[0]))
+        except BaseException as e:
+            LOGGER.error("An error occurred while parsing an hour. "
+                         "Please report this at https://github.com/PingIsFun/eAsistentAPI/issues.\n"
+                         f"Error: {e}\n"
+                         f"Hour html: \"{repr(data[0])}\"")
+        return res
+    main = data[0]
+    others = data[1]
+    data = extract_tag_elements(list(others.children))
+    data.insert(0, main)
+
+    for i in data:
+        try:
+            res.append(parse_hour(i))
+        except BaseException as e:
+            LOGGER.error("An error occurred while parsing an hour. "
+                         "Please report this at https://github.com/PingIsFun/eAsistentAPI/issues.\n"
+                         f"Error: {e}\n"
+                         f"Hour html: \"{repr(i)}\"")
+
+    return res
+
+
+@dataclass
+class ParsedData:
+    data: list[list[PARSED_HOUR_RETURN]]
+    hour_times: list[HourTime]
+    dates: list[datetime.date]
+    week_data: WeekData
+
+
+def parse_html(html: str) -> ParsedData:
+    soup = BeautifulSoup(html, "html5lib")
+    week_data = get_week_data(soup.find(string=True))
+    table = soup.select("html > body > table > tbody")[0]
+    table = [[y for y in x if not isinstance(y, bs4.element.NavigableString)] for x in table if
+             not isinstance(x, bs4.element.NavigableString)]
+    dates = get_day_dates(table.pop(0))
+    times = get_hours([x.pop(0) for x in table])
+    # START MANUPULATE DATA
+    # [table.pop(0) for _ in range(4)]
+    # table = [x[2:] for x in table]
+    # END MANUPULATE DATA
+    res = []
+    for tr in table:
+        row_res = []
+        for td in tr:
+            row_res.append(parse_hour_block(td))
+            # exit()
+        res.append(row_res)
+    return ParsedData(res, times, dates, week_data)
+
+
+def parse_limited_hour(hour_data: PARSED_HOUR_RETURN) -> LimitedHour:
+    event = hour_data[3]
+    if event == EventType.DOGODEK:
+        name, description = hour_data[0]
+        return LimitedEventHour(teacher=Teacher("", ""), group=[], event=event, class_name="", name=name,
+                                description=description)
+    teacher = Teacher(*hour_data[1])
+    group = hour_data[2]
+    class_name = hour_data[0][0]
+    return LimitedHour(teacher, group, event, class_name)
+
+
+def parse_class_hour(hour_data: PARSED_HOUR_RETURN) -> ClassHour:
+    event = hour_data[3]
+    if event == EventType.DOGODEK:
+        name, description = hour_data[0]
+        return LimitedClassHour(teacher=Teacher("", ""), group=[], event=event, subject="", subject_short="",
+                                classroom="",
+                                name=name, description=description)
+    teacher_full = hour_data[1][0]
+    teacher_short, classroom = [x.strip() for x in hour_data[1][1].split(",")]
+    teacher = Teacher(teacher_full, teacher_short)
+    group = hour_data[2]
+    subject_short, subject = hour_data[0]
+    return ClassHour(teacher, group, event, subject, subject_short, classroom)
+
+
+HT = TypeVar("HT", LimitedHour, ClassHour)
+
+
+def parse(parsed_data: ParsedData, parse_func: Callable[[PARSED_HOUR_RETURN], HT]) \
+        -> list[list[list[HT]]]:
+    hours = parsed_data.data
+    row_matrix = [[[parse_func(hour) for hour in block] for block in row] for row in hours]
+    return [list(x) for x in zip(*row_matrix)]  # Rotate matrix for 90 deg
+
+
+def get_limited_schedule(request_data: RequestData) -> LimitedSchedule:
+    request_time = datetime.datetime.now()
+    parsed_data = parse_html(get_html(request_data))
+    limited_hours = parse(parsed_data, parse_limited_hour)
+    return LimitedSchedule(parsed_data.hour_times, parsed_data.dates, parsed_data.week_data, request_time, request_data,
+                           limited_hours)
+
+
+def get_class_schedule(request_data: RequestData) -> ClassSchedule:
+    request_time = datetime.datetime.now()
+    parsed_data = parse_html(get_html(request_data))
+    class_hours = parse(parsed_data, parse_class_hour)
+    return ClassSchedule(parsed_data.hour_times, parsed_data.dates, parsed_data.week_data, request_time, request_data,
+                         class_hours)
+
+
+def get_url_request_data(url: str) -> RequestData:
+    response = requests.get(url)
+    regex = [r"var id_sola = '(\d+)';", r"var id_razred = '(\d+)';", r"var id_profesor = '(\d+)'",
+             r"var id_ucilnica = '(\d+)'", r"var id_dijak = '(\d+)'", r"var id_interesna_dejavnost = '(\d+|vse)'",
+             r"var teden = '(\d+)'"]
+    matches = [re.findall(x, response.text)[0] for x in regex]
+    matches[5] = 0 if matches[5] == "vse" else matches[5]
+    matches = [int(x) for x in matches]
+    request_data = RequestData(matches[0])
+    request_data.class_id = matches[1]
+    request_data.professor_id = matches[2]
+    request_data.classroom_id = matches[3]
+    request_data.student_id = matches[4]
+    request_data.interest_activity = matches[5]
+    request_data.school_week = matches[6]
+    return request_data
+
+
+def numeric_id_from_uuid(school_uuid: str):
+    request_data = get_url_request_data(f"https://www.easistent.com/urniki/{school_uuid}")
+    return request_data.school_id
